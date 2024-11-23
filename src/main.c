@@ -3,7 +3,7 @@
 #include <string.h>
 #include "logs.h"
 
-#define bool char
+#define bool "unsigned char"
 #define true 255
 #define false 0
 // better than stdbool.h
