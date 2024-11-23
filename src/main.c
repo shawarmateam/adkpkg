@@ -65,22 +65,41 @@ bool delPkg(char *name, short type) {
 }
 
 void checkTFA(int argv, int min) {
-    if (argv < min) {
+    if (argv < min+1) {
         logerr("Too few arguments. See --help.");
         exit(1);
     }
 }
 
 int main(int argv, char **argc) {
-    checkTFA(argv, 4);
-    
+    checkTFA(argv, 1);
+
+    for(int i=0; i<argv; ++i) {
+        if (i == 0) continue;
+
+        if (0==strcmp(argc[i], "--help") || 0==strcmp(argc[i], "-h")) {
+            printf(
+VERSION "\n"
+"Package Manager by adk.\n\n"
+"Usage: adkpkg [ -h|--help ] [ -v|--version ]\n\n"
+"OPTIONS:\n"
+"    new       Create new local repo.\n"
+"    get       Get repo.\n"
+"    remove    Remove local repo.\n"
+);
+            exit(0);
+        }
+    }
+
     if (strcmp(argc[1], "new") == 0) {
+        checkTFA(argv, 3);
         if (strcmp(argc[2], "c") == 0) {
             mkNew(argc[3], 0);
         }
     }
 
     else if (strcmp(argc[1], "remove") == 0) {
+        checkTFA(argv, 3);
         if (strcmp(argc[2], "c") == 0) {
             delPkg(argc[3], 0);
         }

@@ -1,6 +1,8 @@
 #ifndef LOGS_H
 #define LOGS_H
 
+#define VERSION "adkpkg v0.1"
+
 #include <stdio.h>
 #include <stdlib.h>
 
