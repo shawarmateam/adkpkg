@@ -7,6 +7,19 @@
 #define false 0
 // better than stdbool.h
 
+char* getPkgName(short type, short *len) {
+    switch (type) {
+        case 0:
+            *len = 1;
+            return "c";
+    }
+
+    fputs("ERROR: This type of package in unavariable\n", stderr);
+    exit(1);
+}
+
+
+
 bool mkNew(char *name, short type) {
     switch (type) {
         case 0:
@@ -17,23 +30,16 @@ bool mkNew(char *name, short type) {
 }
 
 bool delPkg(char *name, short type) {
-    char *type_str;
     short type_len;
+    char *type_str = getPkgName(type, &type_len);
 
-    switch (type) {
-        case 0:
-            type_str = malloc(2);  type_len=1;
-            type_str = "c";
-            break;
-    }
-
-    char *rm_cmd; // 'rm -rf ~/apps/c/test'
     short rm_cmd_len = type_len
         +16
         +strlen(name);
+    char *rm_cmd = malloc(rm_cmd_len); // 'rm -rf ~/apps/c/test'
 
-    snprintf(rm_cmd, 16, "rm -rf ~/apps/%s/%s", type_str, name);
-    printf("rm_cmd: '%s\n'", rm_cmd);
+    snprintf(rm_cmd, rm_cmd_len, "rm -rf ~/apps/%s/%s", type_str, name);
+    printf("rm_cmd: '%s'\n", rm_cmd);
     return true;
 }
 
