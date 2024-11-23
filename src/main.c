@@ -16,7 +16,7 @@ char* getPkgName(short type, short *len) {
     }
 
     //fputs(BOLD_RED "ERROR:" RESET " This type of package in unavariable\n", stderr);
-    logerr("This type of package in unavariable");
+    logerr("This type of package in unavariable.");
     exit(1);
 }
 
@@ -24,8 +24,10 @@ char* getPkgName(short type, short *len) {
 bool mkNew(char *name, short type) {
     switch (type) {
         case 0:
-            printf("типа сделали пакет\n");
+            log("Creating package...");
             break;
+        default:
+            logerr("Package type is unavariable.");
     }
     return true;
 }
@@ -62,15 +64,15 @@ bool delPkg(char *name, short type) {
     return true;
 }
 
-void checkTFA(int argv) {
-    if (argv < 4) {
-        logerr("Too few arguments");
+void checkTFA(int argv, int min) {
+    if (argv < min) {
+        logerr("Too few arguments. See --help.");
         exit(1);
     }
 }
 
 int main(int argv, char **argc) {
-    checkTFA(argv);
+    checkTFA(argv, 4);
     
     if (strcmp(argc[1], "new") == 0) {
         if (strcmp(argc[2], "c") == 0) {
@@ -84,6 +86,9 @@ int main(int argv, char **argc) {
         }
     }
 
-
+    else {
+        logerr("Incorrect args. See --help.");
+        exit(1);
+    }
     return 0;
 }
