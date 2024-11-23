@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "logs.h"
+#include "adkpkg.h"
 
-#define bool "unsigned char"
+#define bool char
 #define true 255
 #define false 0
 // better than stdbool.h
@@ -15,20 +15,32 @@ char* getPkgName(short type, short *len) {
             return "c";
     }
 
-    //fputs(BOLD_RED "ERROR:" RESET " This type of package in unavariable\n", stderr);
     logerr("This type of package in unavariable.");
     exit(1);
 }
 
 
 bool mkNew(char *name, short type) {
-    switch (type) {
-        case 0:
-            log("Creating package...");
-            break;
-        default:
-            logerr("Package type is unavariable.");
+    short type_len = 0;
+    char *type_str = getPkgName(type, &type_len);
+    short name_len = strlen(name);
+
+    log("Copying template to package...");
+
+    short cp_template_len = 66
+        +name_len
+        +(type_len*5);
+
+    char *cp_template = malloc(cp_template_len);
+    snprintf(cp_template, cp_template_len, "cp -r ~/apps/c/adkpkg/%s-pkg/ ~/apps/%s/ > ~/apps/c/adkpkg/logs 2>&1 && mv ~/apps/%s/%s-pkg/ ~/apps/%s/%s", type_str, type_str, type_str, type_str, type_str, name);
+
+    int status = system(cp_template);
+    if (status) {
+        logerr("Unavariable to copy template to package.");
+        log("Aborting...");
+        exit(1); // TODO: сделать очисту памяти по аборту/завершению
     }
+
     return true;
 }
 
