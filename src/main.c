@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "logs.h"
 
 #define bool char
 #define true 255
@@ -14,10 +15,10 @@ char* getPkgName(short type, short *len) {
             return "c";
     }
 
-    fputs("ERROR: This type of package in unavariable\n", stderr);
+    //fputs(BOLD_RED "ERROR:" RESET " This type of package in unavariable\n", stderr);
+    logerr("This type of package in unavariable");
     exit(1);
 }
-
 
 
 bool mkNew(char *name, short type) {
@@ -33,19 +34,37 @@ bool delPkg(char *name, short type) {
     short type_len;
     char *type_str = getPkgName(type, &type_len);
 
-    short rm_cmd_len = type_len
-        +16
+    short rm_path_len = type_len
+        +9
         +strlen(name);
-    char *rm_cmd = malloc(rm_cmd_len); // 'rm -rf ~/apps/c/test'
+    char *rm_path = malloc(rm_path_len); // 'rm -rf ~/apps/c/test'
 
-    snprintf(rm_cmd, rm_cmd_len, "rm -rf ~/apps/%s/%s", type_str, name);
-    printf("rm_cmd: '%s'\n", rm_cmd);
+    snprintf(rm_path, rm_path_len, "~/apps/%s/%s/", type_str, name);
+    printf("rm_path: '%s'\n", rm_path);
+
+    short check_pkg_len = rm_path_len+20;
+    char *check_pkg = malloc(check_pkg_len);
+    snprintf(check_pkg, check_pkg_len, "ls %s > /dev/null 2>&1", rm_path);
+
+    int status = system(check_pkg);
+
+    if (status) {
+        fputs(BOLD_RED "ERROR:" RESET " Can't remove package that doesn't exists.\n", stderr);
+        exit(1);
+    }
+
+    short rm_pkg_cmd_len = rm_path_len+7;
+    char *rm_pkg_cmd = malloc(rm_pkg_cmd_len);
+    snprintf(rm_pkg_cmd, rm_pkg_cmd_len, "rm -rf %s", rm_path);
+
+    system(rm_pkg_cmd);
+
     return true;
 }
 
 void checkTFA(int argv) {
     if (argv < 4) {
-        printf("ERROR: Too few arguments.\n");
+        logerr("Too few arguments");
         exit(1);
     }
 }
