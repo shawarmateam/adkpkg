@@ -8,6 +8,24 @@
 #define false 0
 // better than stdbool.h
 
+void logAdd(const char *textToAdd) {
+    FILE *file = fopen("~/apps/c/adkpkg/logs", "a");
+    if (file == NULL) {
+        logerr("Unavariable to open the log file.");
+        log("Aborting...");
+        exit(1);
+    }
+
+    if (fputs(textToAdd, file) == EOF) {
+        logerr("Unavariable to write into log file.");
+        log("Aborting...");
+        fclose(file);
+        exit(1);
+    }
+
+    fclose(file);
+}
+
 char* getPkgName(short type, short *len) {
     switch (type) {
         case 0:
@@ -27,13 +45,14 @@ bool mkNew(char *name, short type) {
 
     log("Copying template to package...");
 
-    short cp_template_len = 66
+    short cp_template_len = 95
         +name_len
         +(type_len*5);
 
     char *cp_template = malloc(cp_template_len);
-    snprintf(cp_template, cp_template_len, "cp -r ~/apps/c/adkpkg/%s-pkg/ ~/apps/%s/ > ~/apps/c/adkpkg/logs 2>&1 && mv ~/apps/%s/%s-pkg/ ~/apps/%s/%s", type_str, type_str, type_str, type_str, type_str, name);
+    snprintf(cp_template, cp_template_len, "cp -r ~/apps/c/adkpkg/%s-pkg/ ~/apps/%s/ > ~/apps/c/adkpkg/logs 2>&1 && mv ~/apps/%s/%s-pkg/ ~/apps/%s/%s/", type_str, type_str, type_str, type_str, type_str, name);
 
+    logAdd(cp_template);
     int status = system(cp_template);
     if (status) {
         logerr("Unavariable to copy template to package.");
@@ -85,6 +104,7 @@ void checkTFA(int argv, int min) {
 
 int main(int argv, char **argc) {
     checkTFA(argv, 1);
+    system("touch ~/apps/c/adkpkg/logs");
 
     for(int i=0; i<argv; ++i) {
         if (i == 0) continue;
