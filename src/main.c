@@ -1,26 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "adkpkg.h"
 
 #define bool char
 #define true 255
 #define false 0
 // better than stdbool.h
+char *HOME;
 
 void logAdd(const char *textToAdd) {
-    FILE *file = fopen("~/apps/c/adkpkg/logs", "a");
+    char *log_path = "/apps/c/adkpkg/logs";
+
+    FILE *file = fopen(strcat(HOME, log_path), "a");
     if (file == NULL) {
         logerr("Unavariable to open the log file.");
         log("Aborting...");
         exit(1);
     }
 
-    if (fputs(textToAdd, file) == EOF) {
+    if (fputs("\n", file) == EOF) {
         logerr("Unavariable to write into log file.");
         log("Aborting...");
         fclose(file);
         exit(1);
+    } else {
+        fputs(textToAdd, file);
+        fputs("\n", file);
     }
 
     fclose(file);
@@ -47,10 +54,11 @@ bool mkNew(char *name, short type) {
 
     short cp_template_len = 95
         +name_len
-        +(type_len*5);
+        +(type_len*5)
+        +(strlen(HOME)*5);
 
     char *cp_template = malloc(cp_template_len);
-    snprintf(cp_template, cp_template_len, "cp -r ~/apps/c/adkpkg/%s-pkg/ ~/apps/%s/ > ~/apps/c/adkpkg/logs 2>&1 && mv ~/apps/%s/%s-pkg/ ~/apps/%s/%s/", type_str, type_str, type_str, type_str, type_str, name);
+    snprintf(cp_template, cp_template_len, "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/", HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name);
 
     logAdd(cp_template);
     int status = system(cp_template);
@@ -105,6 +113,13 @@ void checkTFA(int argv, int min) {
 int main(int argv, char **argc) {
     checkTFA(argv, 1);
     system("touch ~/apps/c/adkpkg/logs");
+    HOME = malloc(1+strlen(getenv("HOME")));
+    HOME = getenv("HOME");
+
+    if (getuid() == 0) {
+        logerr("Do not run as root.");
+        exit(1);
+    }
 
     for(int i=0; i<argv; ++i) {
         if (i == 0) continue;
