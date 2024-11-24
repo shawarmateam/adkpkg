@@ -294,6 +294,8 @@ bool getPkg(char *name) {
         log("Package to download:");
         log(splited_list[found_i]);
 
+        // TODO: сделать спрос на скачивание
+
         char *package_repo = strdup(splited_list[found_i]);
         freeStrArr(splited_list, list_len);
 
@@ -306,11 +308,17 @@ bool getPkg(char *name) {
             exit(1);
         }
 
+        pthread_t load_download;
+        pthread_start(&load_download, 0, loadingTh, "Downloading package");
+
+        system("cd /tmp/adkpkg");
         char *g_clone = "git clone ";
         status = system(strcat(g_clone, package_repo));
         free(g_clone);
         if (status) {
-            logerr("Unable to clone repo into temp dir (/tmp/adkpkg).");
+            pthread_cancel(load_download);
+            clrLoading(false, "Downloading package");
+            logerr("Unable to download package into temp dir (/tmp/adkpkg).");
             log("Aborting...");
             exit(1);
         }
@@ -326,12 +334,56 @@ bool getPkg(char *name) {
 
         int cfg_len = 0;
         EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
+        free(ADKCFG);
 
         char *type;
         for (int i=0; i<cfg_len; ++i) {
             if (0==strcmp(ADKCFG_VARS[i]->key, "TYPE")) // TODO: добавить больше параметров для adkcfg
                 type = ADKCFG_VARS[i]->value;
         }
+
+        pthread_cancel(load_download);
+        if (!type) {
+            clrLoading(false, "Downloading package");
+            logerr("Type is missing in package.");
+            log("Aborting...");
+            exit(1);
+        }
+
+        clrLoading(true, "Downloading package");
+        pthread_t cp_load;
+        pthread_start(&cp_load, 0, loadingTh, "Copying package into ~/apps");
+
+        int mk_typedir_len = 17
+            +strlen(type);
+
+        char *mk_typedir = malloc(mk_typedir_len);
+        snprintf(mk_typedir, mk_typedir_len, "mkdir -p %s/apps/%s", HOME, type);
+        system(mk_typedir);
+
+        free(mk_typedir);
+
+        int cp_to_apps_len = 24
+            +(strlen(type))*2
+            +strlen(HOME)
+            +strlen(name);
+
+        char *cp_to_apps = malloc(cp_to_apps_len);
+        snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkcfg/%s %s/apps/%s/%s", type, HOME, type, name);
+        status = system(cp_to_apps);
+
+        pthread_cancel(cp_load);
+        if (status) {
+            clrLoading(false, "Copying package into ~/apps");
+            logerr("Unable to download package into ~/apps");
+            printf("%s\n", status);
+            log("Aborting...");
+            free(cp_to_apps);
+            exit(1);
+        }
+
+        clrLoading(true, "Copying package into ~/apps");
+        log("Package was downloaded successfully.");
     }
 
     return true;
