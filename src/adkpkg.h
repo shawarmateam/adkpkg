@@ -24,6 +24,14 @@
 #define log(msg) printf(BOLD_YELLOW "=> " RESET msg "\n")
 
 
+
+typedef struct {
+    char *key;
+    char *value;
+} EnvVar;
+
+
+
 void *loadingTh(void *args) {
     const char *loading[] = {"|", "/", "-", "\\"};
     int i;

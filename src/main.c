@@ -6,7 +6,7 @@
 #include "adkpkg.h"
 
 char *HOME;
-
+bool useGHmirrors = false;
 
 
 void printHelp() {
@@ -16,7 +16,7 @@ VERSION "\n"
 "Usage: adkpkg [ -h|--help ] [ -v|--version ]\n\n"
 "OPTIONS:\n"
 "    new       Create new local repo.\n"
-"    get       Get repo.\n"
+"    get       Get repo. [ -g|--github-mirrors ]\n"
 "    remove    Remove local repo.\n"
     );
 }
@@ -25,6 +25,122 @@ VERSION "\n"
 
 
 
+EnvVar* parseEnv(char *envcontent, int *count) {
+    int numVars = 0;
+    char *temp = strtok(envcontent, "\n");
+    while (temp != NULL) {
+        numVars++;
+        temp = strtok(NULL, "\n");
+    }
+
+    EnvVar *envVars = malloc(numVars * sizeof(EnvVar));
+    if (envVars == NULL) {
+        logerr("Failed to allocate memory for parseEnv.");
+        log("Aborting...");
+        exit(1);
+    }
+
+    temp = strtok(envcontent, "\n");
+    int index = 0;
+    while (temp != NULL) {
+        char *equalSign = strchr(temp, '=');
+        if (equalSign != NULL) {
+            *equalSign = '\0';
+            envVars[index].key = strdup(temp);
+            envVars[index].value = strdup(equalSign + 1);
+            index++;
+        }
+        temp = strtok(NULL, "\n");
+    }
+
+    *count = numVars;
+    return envVars;
+}
+
+void freeEnvVars(EnvVar *envVars, int count) {
+    for (int i = 0; i < count; i++) {
+        free(envVars[i].key);
+        free(envVars[i].value);
+    }
+    free(envVars);
+}
+
+
+
+
+
+char* readFile(const char* filename) {
+    FILE *file;
+    char line[256];
+    char *content = NULL;
+    size_t total_length = 0;
+
+    file = fopen(filename, "r");
+    if (file == NULL) {
+        logerr("Can't open list file.");
+        printf("List file: '%s'\n", filename);
+        log("Aborting...");
+        exit(EXIT_FAILURE);
+    }
+
+    while (fgets(line, sizeof(line), file)) {
+        size_t line_length = strlen(line);
+
+        char *new_content = realloc(content, total_length + line_length + 1);
+        if (new_content == NULL) {
+            logerr("Can't allocate memory.");
+            log("Aborting...");
+
+            free(content);
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
+        content = new_content;
+
+        strcpy(content + total_length, line);
+        total_length += line_length;
+    }
+
+    fclose(file);
+    return content;
+}
+
+char** splitString(const char *input, int *count) {
+    char *input_copy = strdup(input);
+    if (!input_copy) {
+        logerr("Can't copy string for list. (splitString).");
+        log("Aborting...");
+        exit(1);
+    }
+
+    char **args = NULL;
+    *count = 0;
+
+    char *token = strtok(input_copy, " ");
+    while (token != NULL) {
+        args = (char **)realloc(args, (*count + 1) * sizeof(char *));
+        if (!args) {
+            free(input_copy);
+            return NULL;
+        }
+
+        args[*count] = strdup(token);
+        if (!args[*count]) {
+            free(input_copy);
+            for (int i = 0; i < *count; i++) {
+                free(args[i]);
+            }
+            free(args);
+            return NULL;
+        }
+
+        (*count)++;
+        token = strtok(NULL, " ");
+    }
+
+    free(input_copy);
+    return args;
+}
 
 void logAdd(const char *textToAdd) {
     char *log_path = "/apps/c/adkpkg/logs";
@@ -60,6 +176,14 @@ char* getPkgName(short type, short *len) {
     exit(1);
 }
 
+short getPkgIndex(char *type) {
+    if (strcmp(type, "c") == 0) {
+        return 0;
+    }
+
+    logerr("This type of package in unavariable.");
+    exit(1);
+}
 
 bool mkNew(char *name, short type) {
     short type_len = 0;
@@ -138,6 +262,81 @@ bool delPkg(char *name, short type) {
     return true;
 }
 
+void freeStrArr(char **str_arr, int len) {
+    for (int i=0; i<len; ++i) {
+        free(str_arr[i]);
+    }
+    free(str_arr);
+}
+
+bool getPkg(char *name) {
+    log("Getting mirror list...");
+    if (useGHmirrors) {
+        char *list = readFile("~/apps/c/adkpkg/lists/github.txt");
+
+        int list_len = 0;
+        char **splited_list = splitString(list, &list_len);
+        free(list);
+
+        bool isFounded = false;
+        int found_i;
+        for (found_i=0; found_i<list_len; ++found_i) {
+            if (strstr(splited_list[found_i], name)) {
+                isFounded = true;
+            }
+        }
+
+        if (!isFounded) {
+            logerr("Package is unavariable.");
+            exit(1);
+        }
+
+        log("Package to download:");
+        log(splited_list[found_i]);
+
+        char *package_repo = strdup(splited_list[found_i]);
+        freeStrArr(splited_list, list_len);
+
+        log("Preparing to download...");
+
+        int status = system("mkdir -p /tmp/adkpkg");
+        if (status) {
+            logerr("Can't create temp dir for adkpkg.");
+            log("Aborting...");
+            exit(1);
+        }
+
+        char *g_clone = "git clone ";
+        status = system(strcat(g_clone, package_repo));
+        free(g_clone);
+        if (status) {
+            logerr("Unable to clone repo into temp dir (/tmp/adkpkg).");
+            log("Aborting...");
+            exit(1);
+        }
+
+        int adkcfg_path_len = 20
+            +strlen(name);
+    
+        char *adkcfg_path = malloc(adkcfg_path_len);
+
+        snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkcfg/%s/ADKCFG", name);
+        char *ADKCFG = readFile(adkcfg_path);
+        free(adkcfg_path);
+
+        int cfg_len = 0;
+        EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
+
+        char *type;
+        for (int i=0; i<cfg_len; ++i) {
+            if (0==strcmp(ADKCFG_VARS[i]->key, "TYPE")) // TODO: добавить больше параметров для adkcfg
+                type = ADKCFG_VARS[i]->value;
+        }
+    }
+
+    return true;
+}
+
 void checkTFA(int argv, int min) {
     if (argv < min+1) {
         logerr("Too few arguments. See --help.");
@@ -172,16 +371,24 @@ int main(int argv, char **argc) {
 
     if (strcmp(argc[1], "new") == 0) {
         checkTFA(argv, 3);
-        if (strcmp(argc[2], "c") == 0) {
-            mkNew(argc[3], 0);
-        }
+        mkNew(argc[3], getPkgIndex(argc[2]));
     }
 
     else if (strcmp(argc[1], "remove") == 0) {
         checkTFA(argv, 3);
-        if (strcmp(argc[2], "c") == 0) {
-            delPkg(argc[3], 0);
+        delPkg(argc[3], getPkgIndex(argc[2]));
+    }
+
+    else if (strcmp(argc[1], "get") == 0) {
+        checkTFA(argv, 2);
+        short i=0;
+
+        if (0==strcmp(argc[2], "--github-mirrors") || 0==strcmp(argc[2], "-g")) {
+            useGHmirrors = true;
+            ++i;
         }
+
+        getPkg(argc[i+2]);
     }
 
     else {
