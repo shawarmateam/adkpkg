@@ -2,12 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "adkpkg.h"
 
-#define bool char
-#define true 255
-#define false 0
-// better than stdbool.h
 char *HOME;
 
 void logAdd(const char *textToAdd) {
@@ -81,7 +78,9 @@ bool delPkg(char *name, short type) {
     char *rm_path = malloc(rm_path_len); // 'rm -rf ~/apps/c/test'
 
     snprintf(rm_path, rm_path_len, "~/apps/%s/%s/", type_str, name);
-    printf("rm_path: '%s'\n", rm_path);
+    
+    pthread_t rm_package;
+    pthread_create(&rm_package, 0, loadingTh, "Removing package");
 
     short check_pkg_len = rm_path_len+20;
     char *check_pkg = malloc(check_pkg_len);
@@ -90,7 +89,9 @@ bool delPkg(char *name, short type) {
     int status = system(check_pkg);
 
     if (status) {
-        fputs(BOLD_RED "ERROR:" RESET " Can't remove package that doesn't exists.\n", stderr);
+        pthread_cancel(rm_package);
+        clrLoading(false, "Removing package");
+        logerr("Can't remove package that doesn't exists.");
         exit(1);
     }
 
@@ -98,8 +99,17 @@ bool delPkg(char *name, short type) {
     char *rm_pkg_cmd = malloc(rm_pkg_cmd_len);
     snprintf(rm_pkg_cmd, rm_pkg_cmd_len, "rm -rf %s", rm_path);
 
-    system(rm_pkg_cmd);
+    status = system(rm_pkg_cmd);
+    if (status) {
+        pthread_cancel(rm_package);
+        clrLoading(false, "Removing package");
+        logerr("Remove aborted.");
+        printf("RM: Status %d\n", status);
+        exit(1);
+    }
 
+    pthread_cancel(rm_package);
+    clrLoading(true, "Removing package");
     return true;
 }
 
