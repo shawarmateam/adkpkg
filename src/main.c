@@ -7,6 +7,25 @@
 
 char *HOME;
 
+
+
+void printHelp() {
+    printf(
+VERSION "\n"
+"Package Manager by adk.\n\n"
+"Usage: adkpkg [ -h|--help ] [ -v|--version ]\n\n"
+"OPTIONS:\n"
+"    new       Create new local repo.\n"
+"    get       Get repo.\n"
+"    remove    Remove local repo.\n"
+    );
+}
+
+
+
+
+
+
 void logAdd(const char *textToAdd) {
     char *log_path = "/apps/c/adkpkg/logs";
 
@@ -47,7 +66,8 @@ bool mkNew(char *name, short type) {
     char *type_str = getPkgName(type, &type_len);
     short name_len = strlen(name);
 
-    log("Copying template to package...");
+    pthread_t cp_load;
+    pthread_create(&cp_load, 0, loadingTh, "Copying template to package");
 
     short cp_template_len = 95
         +name_len
@@ -60,11 +80,16 @@ bool mkNew(char *name, short type) {
     logAdd(cp_template);
     int status = system(cp_template);
     if (status) {
+        pthread_cancel(cp_load);
+        clrLoading(false, "Copying template to package");
+
         logerr("Unavariable to copy template to package.");
         log("Aborting...");
         exit(1); // TODO: сделать очисту памяти по аборту/завершению
     }
 
+    pthread_cancel(cp_load);
+    clrLoading(true, "Copying template to package");
     return true;
 }
 
@@ -121,29 +146,26 @@ void checkTFA(int argv, int min) {
 }
 
 int main(int argv, char **argc) {
-    checkTFA(argv, 1);
-    system("touch ~/apps/c/adkpkg/logs");
-    HOME = malloc(1+strlen(getenv("HOME")));
-    HOME = getenv("HOME");
-
     if (getuid() == 0) {
         logerr("Do not run as root.");
         exit(1);
     }
 
+    checkTFA(argv, 1);
+    system("touch ~/apps/c/adkpkg/logs");
+    HOME = malloc(1+strlen(getenv("HOME")));
+    HOME = getenv("HOME");
+
+
     for(int i=0; i<argv; ++i) {
         if (i == 0) continue;
 
         if (0==strcmp(argc[i], "--help") || 0==strcmp(argc[i], "-h")) {
-            printf(
-VERSION "\n"
-"Package Manager by adk.\n\n"
-"Usage: adkpkg [ -h|--help ] [ -v|--version ]\n\n"
-"OPTIONS:\n"
-"    new       Create new local repo.\n"
-"    get       Get repo.\n"
-"    remove    Remove local repo.\n"
-);
+            printHelp();
+            exit(0);
+        } else
+        if (0==strcmp(argc[i], "--version") || 0==strcmp(argc[i], "-v")) {
+            printf(VERSION "\n");
             exit(0);
         }
     }

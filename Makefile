@@ -6,3 +6,10 @@ build:
 
 run: build
 	./bin/adkpkg
+
+install: build
+	cp ./bin/adkpkg /usr/bin/
+
+clean:
+	rm -rf bin/
+	rm -f /usr/bin/adkpkg

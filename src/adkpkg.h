@@ -16,7 +16,9 @@
 
 #define BOLD_RED "\033[1;31m"
 #define BOLD_YELLOW "\033[1;33m"
+#define BOLD_GREEN "\033[1;32m"
 #define RESET "\033[0m"
+#define LAST_STR "\r"
 
 #define logerr(msg) fputs(BOLD_RED "ERROR: " RESET msg "\n", stderr)
 #define log(msg) printf(BOLD_YELLOW "=> " RESET msg "\n")
@@ -27,7 +29,7 @@ void *loadingTh(void *args) {
     int i;
 
     while (1) {
-        printf("\r%s... %s", (char*)args, loading[i % 4]);
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... %s", (char*)args, loading[i % 4]);
         fflush(stdout);
         usleep(200000);
 
@@ -38,10 +40,10 @@ void *loadingTh(void *args) {
 
 void clrLoading(bool isCorrect, char *str) {
     if (isCorrect)
-    printf("\r%s... Done!");
+    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_GREEN "Done!" RESET);
 
     else
-    printf("\r%s... Error!");
+    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET);
 
     printf("\n\n");
     fflush(stdout);
