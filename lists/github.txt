@@ -1,2 +1,2 @@
 https://github.com/shawarmateam/adkpkg.git
-https://github.com/shawarmateam/ru-prereform-c.git
+https://github.com/shawarmateam/adifetch.git

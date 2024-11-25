@@ -292,7 +292,7 @@ bool getPkg(char *name) {
         }
 
         log("Package to download:");
-        log(splited_list[found_i]);
+        printf("%s\n", splited_list[found_i]);
 
         // TODO: сделать спрос на скачивание
 
@@ -309,12 +309,11 @@ bool getPkg(char *name) {
         }
 
         pthread_t load_download;
-        pthread_start(&load_download, 0, loadingTh, "Downloading package");
+        pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
         system("cd /tmp/adkpkg");
         char *g_clone = "git clone ";
         status = system(strcat(g_clone, package_repo));
-        free(g_clone);
         if (status) {
             pthread_cancel(load_download);
             clrLoading(false, "Downloading package");
@@ -338,8 +337,8 @@ bool getPkg(char *name) {
 
         char *type;
         for (int i=0; i<cfg_len; ++i) {
-            if (0==strcmp(ADKCFG_VARS[i]->key, "TYPE")) // TODO: добавить больше параметров для adkcfg
-                type = ADKCFG_VARS[i]->value;
+            if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
+                type = ADKCFG_VARS[i].value;
         }
 
         pthread_cancel(load_download);
@@ -352,7 +351,7 @@ bool getPkg(char *name) {
 
         clrLoading(true, "Downloading package");
         pthread_t cp_load;
-        pthread_start(&cp_load, 0, loadingTh, "Copying package into ~/apps");
+        pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
 
         int mk_typedir_len = 17
             +strlen(type);
