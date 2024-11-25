@@ -272,18 +272,38 @@ void freeStrArr(char **str_arr, int len) {
 bool getPkg(char *name) {
     log("Getting mirror list...");
     if (useGHmirrors) {
-        char *list = readFile("~/apps/c/adkpkg/lists/github.txt");
+        short len_list = 32
+            +strlen(HOME);
 
-        int list_len = 0;
-        char **splited_list = splitString(list, &list_len);
-        free(list);
+        char *list_cmd = malloc(len_list);
+        snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/github.txt", HOME);
+
+        char *list = readFile(list_cmd);
+        printf("LIST: '%s'\n", list);
+        free(list_cmd);
+
+        //int list_len = 0;
+        //char **splited_list = splitString(list, &list_len);
+        //free(list);
 
         bool isFounded = false;
-        int found_i;
-        for (found_i=0; found_i<list_len; ++found_i) {
-            if (strstr(splited_list[found_i], name)) {
+        bool isLink = false;
+        char *package_repo;
+        
+        char *token = strtok(list, "\n");
+        while (token != 0) {
+            if (isFounded) {
+                package_repo = malloc(strlen(token));
+                package_repo = token;
+                break;
+            }
+
+            if (!isLink && 0==strcmp(token, name)) {
                 isFounded = true;
             }
+
+            token = strtok(0, "\n");
+            isLink = !isLink;
         }
 
         if (!isFounded) {
@@ -292,12 +312,9 @@ bool getPkg(char *name) {
         }
 
         log("Package to download:");
-        printf("%s\n", splited_list[found_i]);
-
+        printf("'%s'\n%d\n", package_repo);
+        exit(0);
         // TODO: сделать спрос на скачивание
-
-        char *package_repo = strdup(splited_list[found_i]);
-        freeStrArr(splited_list, list_len);
 
         log("Preparing to download...");
 

@@ -1,2 +1,5 @@
+adkpkg
 https://github.com/shawarmateam/adkpkg.git
+
+adifetch
 https://github.com/shawarmateam/adifetch.git
