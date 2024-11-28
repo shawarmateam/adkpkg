@@ -170,6 +170,9 @@ char* getPkgName(short type, short *len) {
         case 0:
             *len = 1;
             return "c";
+        case 1:
+            *len = 3;
+            return "cpp";
     }
 
     logerr("This type of package in unavariable.");
@@ -179,6 +182,9 @@ char* getPkgName(short type, short *len) {
 short getPkgIndex(char *type) {
     if (strcmp(type, "c") == 0) {
         return 0;
+    } else
+    if (strcmp(type, "cpp") == 0) {
+        return 1;
     }
 
     logerr("This type of package in unavariable.");
