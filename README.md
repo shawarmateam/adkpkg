@@ -7,7 +7,7 @@ You can add custom packages or download existing.
 
 To install **adkPKG** follow these steps:
 
-1. **Create a folders in your `$HOME` directory:**
+1. **Create the folders in your `$HOME` directory:**
 
 ```
 cd;mkdir -p apps/c/adkpkg
@@ -27,7 +27,9 @@ sudo mkdir /adkbin
 
 4. **Build *adkpkg*:**
 
-`cd apps/c/adkpkg;sudo make clean install`
+```
+cd apps/c/adkpkg;sudo make clean install
+```
 
 5. **Add** `/adkbin` to **`$PATH`** in your shell configuration:
 
@@ -43,7 +45,7 @@ echo "" >> ~/.config/fish/config.fish;echo "set PATH /adkbin $PATH" >> ~/.config
 echo "" >> ~/.bashrc;echo 'export PATH="$PATH:/adkbin"' >> ~/.bashrc;source ~/.bashrc
 ```
 
-- zsh
+- zsh:
 
 ```
 echo "" >> ~/.zshrc;echo 'export PATH="$PATH:/adkbin"' >> ~/.zshrc;source ~/.zshrc
@@ -67,7 +69,7 @@ If the command returns the path of **adkPKG**, then the installation was success
 
 ### License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/shawarmateam/adkpkg/LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/shawarmateam/adkpkg/blob/main/LICENSE) file for details.
 
 ---
 
