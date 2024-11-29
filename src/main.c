@@ -319,7 +319,6 @@ bool getPkg(char *name) {
 
         log("Package to download:");
         printf("'%s'\n%d\n", package_repo);
-        exit(0);
         // TODO: сделать спрос на скачивание
 
         log("Preparing to download...");
@@ -334,9 +333,21 @@ bool getPkg(char *name) {
         pthread_t load_download;
         pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
-        system("cd /tmp/adkpkg");
-        char *g_clone = "git clone ";
-        status = system(strcat(g_clone, package_repo));
+        status = system("cd /tmp/adkpkg");
+        if (status) {
+            pthread_cancel(load_download);
+            clrLoading(false, "Downloading package");
+            logerr("Unable to cd into temp dir (/tmp/adkpkg).");
+            log("Aborting...");
+            exit(1);
+        }
+        //                 11==strlen("git clone ")+1 (null-terminator)
+        short g_clone_len = 11+strlen(package_repo);
+        char *g_clone = malloc(g_clone_len);
+        snprintf(g_clone, g_clone_len, "git clone %s", package_repo);
+
+        status = system(g_clone);
+        free(g_clone);
         if (status) {
             pthread_cancel(load_download);
             clrLoading(false, "Downloading package");
@@ -350,7 +361,7 @@ bool getPkg(char *name) {
     
         char *adkcfg_path = malloc(adkcfg_path_len);
 
-        snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkcfg/%s/ADKCFG", name);
+        snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
         char *ADKCFG = readFile(adkcfg_path);
         free(adkcfg_path);
 
