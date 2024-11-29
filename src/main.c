@@ -381,6 +381,7 @@ bool getPkg(char *name) {
         pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
 
         int mk_typedir_len = 17
+            +strlen(HOME)
             +strlen(type);
 
         char *mk_typedir = malloc(mk_typedir_len);
@@ -390,12 +391,12 @@ bool getPkg(char *name) {
         free(mk_typedir);
 
         int cp_to_apps_len = 24
-            +(strlen(type))*2
+            +strlen(type)
             +strlen(HOME)
-            +strlen(name);
+            +(strlen(name))*2;
 
         char *cp_to_apps = malloc(cp_to_apps_len);
-        snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkcfg/%s %s/apps/%s/%s", type, HOME, type, name);
+        snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkpkg/%s %s/apps/%s/%s", name, HOME, type, name);
         status = system(cp_to_apps);
 
         pthread_cancel(cp_load);
