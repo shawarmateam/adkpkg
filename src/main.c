@@ -330,9 +330,11 @@ bool getPkg(char *name) {
         pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
         //                 11==strlen("git clone ")+1 (null-terminator)
-        short g_clone_len = 23+strlen(package_repo);
+        short g_clone_len = 24
+            +strlen(package_repo)
+            +strlen(name);
         char *g_clone = malloc(g_clone_len);
-        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg", package_repo);
+        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg/%s", package_repo, name);
 
         status = system(g_clone);
         free(g_clone);
@@ -355,10 +357,12 @@ bool getPkg(char *name) {
 
         int cfg_len = 0;
         EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
+        printf("ADKCFG: '%s'\n", ADKCFG);
         free(ADKCFG);
 
-        char *type;
+        char *type = 0x00;
         for (int i=0; i<cfg_len; ++i) {
+            printf("current key: %s\n", ADKCFG_VARS[i].key);
             if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
                 type = ADKCFG_VARS[i].value;
         }
@@ -367,6 +371,7 @@ bool getPkg(char *name) {
         if (!type) {
             clrLoading(false, "Downloading package");
             logerr("Type is missing in package.");
+            printf("Type: '%s'\n", type);
             log("Aborting...");
             exit(1);
         }
