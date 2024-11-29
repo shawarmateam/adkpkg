@@ -25,36 +25,39 @@ VERSION "\n"
 
 
 
-EnvVar* parseEnv(char *envcontent, int *count) {
-    int numVars = 0;
-    char *temp = strtok(envcontent, "\n");
-    while (temp != NULL) {
-        numVars++;
-        temp = strtok(NULL, "\n");
+EnvVar* parseEnv(const char *envString, int *count) {
+    int lines = 0;
+    const char *ptr = envString;
+    while (*ptr) {
+        if (*ptr == '\n') lines++;
+        ptr++;
     }
 
-    EnvVar *envVars = malloc(numVars * sizeof(EnvVar));
-    if (envVars == NULL) {
-        logerr("Failed to allocate memory for parseEnv.");
-        log("Aborting...");
-        exit(1);
+    if (*(ptr - 1) != '\n') lines++;
+
+    EnvVar *envVarsArray = malloc(lines * sizeof(EnvVar));
+    if (!envVarsArray) {
+        return NULL;
     }
 
-    temp = strtok(envcontent, "\n");
+    char *envStringCopy = strdup(envString);
+    char *line = strtok(envStringCopy, "\n");
     int index = 0;
-    while (temp != NULL) {
-        char *equalSign = strchr(temp, '=');
-        if (equalSign != NULL) {
-            *equalSign = '\0';
-            envVars[index].key = strdup(temp);
-            envVars[index].value = strdup(equalSign + 1);
+
+    while (line != NULL) {
+        char *equalSign = strchr(line, '=');
+        if (equalSign) {
+            *equalSign = 0;
+            envVarsArray[index].key = strdup(line);
+            envVarsArray[index].value = strdup(equalSign + 1);
             index++;
         }
-        temp = strtok(NULL, "\n");
+        line = strtok(NULL, "\n");
     }
 
-    *count = numVars;
-    return envVars;
+    free(envStringCopy);
+    *count = lines;
+    return envVarsArray;
 }
 
 void freeEnvVars(EnvVar *envVars, int count) {
