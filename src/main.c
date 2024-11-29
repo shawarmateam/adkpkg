@@ -13,7 +13,7 @@ void printHelp() {
     printf(
 VERSION "\n"
 "Package Manager by adk.\n\n"
-"Usage: adkpkg [ -h|--help ] [ -v|--version ]\n\n"
+"Usage: adkpkg [ -h|--help ] [ -v|--version ] [ -p|--path [PKG_NAME] ]\n\n"
 "OPTIONS:\n"
 "    new       Create new local repo.\n"
 "    get       Get repo. [ -g|--github-mirrors ]\n"
@@ -410,6 +410,32 @@ bool getPkg(char *name) {
         }
 
         clrLoading(true, "Copying package into ~/apps");
+        log("Setting package into PKGS_INFO file...");
+
+        short p_info_path_len = 25+strlen(HOME);
+        char *p_info_path = malloc(p_info_path_len);
+        snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
+
+        short str_pkg_len = 2
+            +(strlen(name)*2)
+            +strlen(HOME)
+            +strlen(type);
+
+        char *str_pkg = malloc(str_pkg_len);
+        snprintf(str_pkg, str_pkg_len, "%s=%s/apps/%s/%s", name, HOME, type, name);
+
+        FILE *pkgs_info = fopen(p_info_path, "a");
+        free(p_info_path);
+        if (!pkgs_info) {
+            logerr("Can't open PKGS_INFO file. Package was not added to package list.");
+        } else
+
+        if (fputs(str_pkg, pkgs_info) == EOF) {
+            logerr("Can't write to PKGS_INFO file. Package was not added to package list.");
+        }
+
+        free(str_pkg);
+        fclose(pkgs_info);
         log("Package was downloaded successfully.");
     }
 
@@ -438,10 +464,31 @@ int main(int argv, char **argc) {
     for(int i=0; i<argv; ++i) {
         if (i == 0) continue;
 
+        if (0==strcmp(argc[i], "--path") || 0==strcmp(argc[i], "-p")) {
+            checkTFA(argv, 2);
+
+            // $HOME/apps/c/adkpkg/PKGS_INFO
+            short p_info_path_len = 25+strlen(HOME);
+            char *p_info_path = malloc(p_info_path_len);
+            snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
+
+            char *env_str = readFile(p_info_path);
+            free(p_info_path);
+            int pkgs_len = 0;
+            EnvVar *pkgs = parseEnv(env_str, &pkgs_len);
+
+            for (int j=0; j<pkgs_len; ++j) {
+                if (0==strcmp(pkgs[j].key, argc[i+1])) {
+                    printf("%s\n", pkgs[j].value);
+                    break;
+                }
+            }
+            exit(0);
+        }
         if (0==strcmp(argc[i], "--help") || 0==strcmp(argc[i], "-h")) {
             printHelp();
             exit(0);
-        } else
+        }
         if (0==strcmp(argc[i], "--version") || 0==strcmp(argc[i], "-v")) {
             printf(VERSION "\n");
             exit(0);

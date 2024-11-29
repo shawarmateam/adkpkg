@@ -51,9 +51,9 @@ void clrLoading(bool isCorrect, char *str) {
     printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_GREEN "Done!" RESET);
 
     else
-    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET);
+    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET "\n");
 
-    printf("\n\n");
+    printf("\n");
     fflush(stdout);
 }
 
