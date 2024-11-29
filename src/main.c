@@ -330,11 +330,11 @@ bool getPkg(char *name) {
         pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
         //                 11==strlen("git clone ")+1 (null-terminator)
-        short g_clone_len = 24
+        short g_clone_len = 36
             +strlen(package_repo)
             +strlen(name);
         char *g_clone = malloc(g_clone_len);
-        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg/%s", package_repo, name);
+        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg/%s > /dev/null", package_repo, name);
 
         status = system(g_clone);
         free(g_clone);
