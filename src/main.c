@@ -77,8 +77,8 @@ char* readFile(const char* filename) {
 
     file = fopen(filename, "r");
     if (file == NULL) {
-        logerr("Can't open list file.");
-        printf("List file: '%s'\n", filename);
+        logerr("Can't open file.");
+        printf("File: '%s'\n", filename);
         log("Aborting...");
         exit(EXIT_FAILURE);
     }
@@ -288,10 +288,6 @@ bool getPkg(char *name) {
         printf("LIST: '%s'\n", list);
         free(list_cmd);
 
-        //int list_len = 0;
-        //char **splited_list = splitString(list, &list_len);
-        //free(list);
-
         bool isFounded = false;
         bool isLink = false;
         char *package_repo;
@@ -333,18 +329,10 @@ bool getPkg(char *name) {
         pthread_t load_download;
         pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
-        status = system("cd /tmp/adkpkg");
-        if (status) {
-            pthread_cancel(load_download);
-            clrLoading(false, "Downloading package");
-            logerr("Unable to cd into temp dir (/tmp/adkpkg).");
-            log("Aborting...");
-            exit(1);
-        }
         //                 11==strlen("git clone ")+1 (null-terminator)
-        short g_clone_len = 11+strlen(package_repo);
+        short g_clone_len = 23+strlen(package_repo);
         char *g_clone = malloc(g_clone_len);
-        snprintf(g_clone, g_clone_len, "git clone %s", package_repo);
+        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg", package_repo);
 
         status = system(g_clone);
         free(g_clone);
