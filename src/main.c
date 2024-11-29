@@ -6,6 +6,7 @@
 #include "adkpkg.h"
 
 char *HOME;
+short HOME_LEN;
 bool useGHmirrors = false;
 
 
@@ -205,7 +206,7 @@ bool mkNew(char *name, short type) {
     short cp_template_len = 95
         +name_len
         +(type_len*5)
-        +(strlen(HOME)*5);
+        +(HOME_LEN*5);
 
     char *cp_template = malloc(cp_template_len);
     snprintf(cp_template, cp_template_len, "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/", HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name);
@@ -282,7 +283,7 @@ bool getPkg(char *name) {
     log("Getting mirror list...");
     if (useGHmirrors) {
         short len_list = 32
-            +strlen(HOME);
+            +HOME_LEN;
 
         char *list_cmd = malloc(len_list);
         snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/github.txt", HOME);
@@ -384,7 +385,7 @@ bool getPkg(char *name) {
         pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
 
         int mk_typedir_len = 17
-            +strlen(HOME)
+            +HOME_LEN
             +strlen(type);
 
         char *mk_typedir = malloc(mk_typedir_len);
@@ -395,7 +396,7 @@ bool getPkg(char *name) {
 
         int cp_to_apps_len = 24
             +strlen(type)
-            +strlen(HOME)
+            +HOME_LEN
             +(strlen(name))*2;
 
         char *cp_to_apps = malloc(cp_to_apps_len);
@@ -415,13 +416,13 @@ bool getPkg(char *name) {
         clrLoading(true, "Copying package into ~/apps");
         log("Setting package into PKGS_INFO file...");
 
-        short p_info_path_len = 25+strlen(HOME);
+        short p_info_path_len = 25+HOME_LEN;
         char *p_info_path = malloc(p_info_path_len);
         snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
 
         short str_pkg_len = 2
             +(strlen(name)*2)
-            +strlen(HOME)
+            +HOME_LEN
             +strlen(type);
 
         char *str_pkg = malloc(str_pkg_len);
@@ -462,6 +463,7 @@ int main(int argv, char **argc) {
     system("touch ~/apps/c/adkpkg/logs ~/apps/c/adkpkg/PKGS_INFO");
     HOME = malloc(1+strlen(getenv("HOME")));
     HOME = getenv("HOME");
+    HOME_LEN = strlen(HOME);
 
 
     for(int i=0; i<argv; ++i) {
@@ -471,7 +473,7 @@ int main(int argv, char **argc) {
             checkTFA(argv, 2);
 
             // $HOME/apps/c/adkpkg/PKGS_INFO
-            short p_info_path_len = 25+strlen(HOME);
+            short p_info_path_len = 25+HOME_LEN;
             char *p_info_path = malloc(p_info_path_len);
             snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
 
