@@ -459,7 +459,7 @@ int main(int argv, char **argc) {
     }
 
     checkTFA(argv, 1);
-    system("touch ~/apps/c/adkpkg/logs");
+    system("touch ~/apps/c/adkpkg/logs ~/apps/c/adkpkg/PKGS_INFO");
     HOME = malloc(1+strlen(getenv("HOME")));
     HOME = getenv("HOME");
 
