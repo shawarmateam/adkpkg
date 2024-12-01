@@ -1,3 +1,9 @@
 readline
-wget -O /tmp/adkpkg/readline/over_system.tar.zst --content-disposition https://archlinux.org/packages/core/x86_64/readline/download/ && tar xpvf /tmp/adkpkg/readline/over_system.tar.zst --xattrs-include='*.*' --numeric-owner
+wget -O /tmp/adkpkg/readline/over_system.tar.zst --content-disposition https://archlinux.org/packages/core/x86_64/readline/download/ && mkdir -p /tmp/adkpkg/readline && tar xpvf /tmp/adkpkg/readline/over_system.tar.zst --xattrs-include='*.*' --numeric-owner
+
+ncurses
+wget -O /tmp/adkpkg/ncurses/over_system.tar.zst --content-disposition https://archlinux.org/packages/core/x86_64/ncurses/download/ && mkdir -p /tmp/adkpkg/ncurses && tar xpvf /tmp/adkpkg/ncurses/over_system.tar.zst --xattrs-include='*.*' --numeric-owner
+
+bash
+wget -O /tmp/adkpkg/bash/over_system.tar.zst --content-disposition https://archlinux.org/packages/core/x86_64/bash/download/ && mkdir -p /tmp/adkpkg/bash && tar xpvf /tmp/adkpkg/bash/over_system.tar.zst --xattrs-include='*.*' --numeric-owner
 
