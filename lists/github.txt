@@ -1,5 +1,5 @@
 adkpkg
-https://github.com/shawarmateam/adkpkg.git
+git clone https://github.com/shawarmateam/adkpkg.git /tmp/adkpkg/adkpkg
 
 adifetch
-https://github.com/shawarmateam/adifetch.git
+git clone https://github.com/shawarmateam/adifetch.git /tmp/adkpkg/adifetch

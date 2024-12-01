@@ -7,7 +7,8 @@
 
 char *HOME;
 short HOME_LEN;
-bool useGHmirrors = false;
+char *mirrorName;
+bool isOverSystem;
 
 
 void printHelp() {
@@ -16,8 +17,8 @@ VERSION "\n"
 "Package Manager by adk.\n\n"
 "Usage: adkpkg [ -h|--help ] [ -v|--version ] [ -p|--path [PKG_NAME] ]\n\n"
 "OPTIONS:\n"
-"    new       Create new local repo.\n"
-"    get       Get repo. [ -g|--github-mirrors ]\n"
+"    new       Create new local repo. [ TYPE NAME ]\n"
+"    get       Get repo from a mirror (arch, github, aur, etc.). [ MIRROR NAME ]\n"
 "    remove    Remove local repo.\n"
     );
 }
@@ -281,78 +282,80 @@ void freeStrArr(char **str_arr, int len) {
 
 bool getPkg(char *name) {
     log("Getting mirror list...");
-    if (useGHmirrors) {
-        short len_list = 32
-            +HOME_LEN;
+    short len_list = 32
+        +HOME_LEN;
 
-        char *list_cmd = malloc(len_list);
-        snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/github.txt", HOME);
+    char *list_cmd = malloc(len_list);
+    snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/%s.txt", HOME, mirrorName);
 
-        char *list = readFile(list_cmd);
-        printf("LIST: '%s'\n", list);
-        free(list_cmd);
+    char *list = readFile(list_cmd);
+    printf("LIST: '%s'\n", list);
+    free(list_cmd);
 
-        bool isFounded = false;
-        bool isLink = false;
-        char *package_repo;
-        
-        char *token = strtok(list, "\n");
-        while (token != 0) {
-            if (isFounded) {
-                package_repo = malloc(strlen(token));
-                package_repo = token;
-                break;
-            }
-
-            if (!isLink && 0==strcmp(token, name)) {
-                isFounded = true;
-            }
-
-            token = strtok(0, "\n");
-            isLink = !isLink;
+    bool isFounded = false;
+    bool isLink = false;
+    char *package_repo;
+    
+    char *token = strtok(list, "\n");
+    while (token != 0) {
+        if (isFounded) {
+            package_repo = malloc(strlen(token));
+            package_repo = token;
+            break;
         }
 
-        if (!isFounded) {
-            logerr("Package is unavariable.");
-            exit(1);
+        if (!isLink && 0==strcmp(token, name)) {
+            isFounded = true;
         }
 
-        log("Package to download:");
-        printf("'%s'\n%d\n", package_repo);
-        // TODO: сделать спрос на скачивание
+        token = strtok(0, "\n");
+        isLink = !isLink;
+    }
 
-        log("Preparing to download...");
+    if (!isFounded) {
+        logerr("Package is unavariable.");
+        exit(1);
+    }
 
-        int status = system("mkdir -p /tmp/adkpkg");
-        if (status) {
-            logerr("Can't create temp dir for adkpkg.");
-            log("Aborting...");
-            exit(1);
-        }
+    log("Package to download:");
+    printf("'%s'\n%d\n", package_repo);
+    // TODO: сделать спрос на скачивание
 
-        pthread_t load_download;
-        pthread_create(&load_download, 0, loadingTh, "Downloading package");
+    log("Preparing to download...");
 
-        //                 11==strlen("git clone ")+1 (null-terminator)
-        short g_clone_len = 36
-            +strlen(package_repo)
-            +strlen(name);
-        char *g_clone = malloc(g_clone_len);
-        snprintf(g_clone, g_clone_len, "git clone %s /tmp/adkpkg/%s > /dev/null", package_repo, name);
+    int status = system("mkdir -p /tmp/adkpkg");
+    if (status) {
+        logerr("Can't create temp dir for adkpkg.");
+        log("Aborting...");
+        exit(1);
+    }
 
-        status = system(g_clone);
-        free(g_clone);
-        if (status) {
-            pthread_cancel(load_download);
-            clrLoading(false, "Downloading package");
-            logerr("Unable to download package into temp dir (/tmp/adkpkg).");
-            log("Aborting...");
-            exit(1);
-        }
+    pthread_t load_download;
+    pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
+    //                 11==strlen("git clone ")+1 (null-terminator)
+    status = system(package_repo);
+    free(package_repo);
+    if (status) {
+        pthread_cancel(load_download);
+        clrLoading(false, "Downloading package");
+        logerr("Unable to download package into temp dir (/tmp/adkpkg).");
+        log("Aborting...");
+        exit(1);
+    }
+
+    int check_oversys_len = 36+strlen(name);
+    char *check_oversys = malloc(check_oversys_len);
+    snprintf(check_oversys, check_oversys_len, "ls /tmp/adkpkg/%s/over_system.tar.zst", name);
+    status = system(check_oversys);
+    if (status) isOverSystem = false;
+    else        isOverSystem = true;
+    free(check_oversys);
+
+    if (!over_system) {
         int adkcfg_path_len = 20
             +strlen(name);
-    
+
         char *adkcfg_path = malloc(adkcfg_path_len);
 
         snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
@@ -440,8 +443,9 @@ bool getPkg(char *name) {
 
         free(str_pkg);
         fclose(pkgs_info);
-        log("Package was downloaded successfully.");
     }
+
+    log("Package was downloaded successfully.");
 
     return true;
 }
@@ -511,15 +515,10 @@ int main(int argv, char **argc) {
     }
 
     else if (strcmp(argc[1], "get") == 0) {
-        checkTFA(argv, 2);
-        short i=0;
+        checkTFA(argv, 3);
 
-        if (0==strcmp(argc[2], "--github-mirrors") || 0==strcmp(argc[2], "-g")) {
-            useGHmirrors = true;
-            ++i;
-        }
-
-        getPkg(argc[i+2]);
+        mirrorName = strdup(argc[2]);
+        getPkg(argc[3]);
     }
 
     else {
