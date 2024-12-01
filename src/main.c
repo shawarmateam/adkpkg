@@ -352,7 +352,7 @@ bool getPkg(char *name) {
     else        isOverSystem = true;
     free(check_oversys);
 
-    if (!over_system) {
+    if (!isOverSystem) {
         int adkcfg_path_len = 20
             +strlen(name);
 
