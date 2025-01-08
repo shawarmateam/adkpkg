@@ -3,3 +3,9 @@ git clone https://github.com/shawarmateam/adkpkg.git /tmp/adkpkg/adkpkg
 
 adifetch
 git clone https://github.com/shawarmateam/adifetch.git /tmp/adkpkg/adifetch
+
+opengl-tutorials
+git clone https://github.com/VictorGordan/opengl-tutorials.git /tmp/adkpkg/opengl-tutorials
+
+adisteyfs-readme
+git clone https://github.com/adisteyf/adisteyf.git /tmp/adkpkg/adisteyf

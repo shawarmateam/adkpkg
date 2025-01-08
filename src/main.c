@@ -1,33 +1,59 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
+/*****************
+ * Headers       *
+ *****************/
+
 #include "adkpkg.h"
 
-char *HOME;
-short HOME_LEN;
-char *mirrorName;
-bool isOverSystem;
 
 
-void printHelp() {
-    printf(
-VERSION "\n"
-"Package Manager by adk.\n\n"
-"Usage: adkpkg [ -h|--help ] [ -v|--version ] [ -p|--path [PKG_NAME] ]\n\n"
-"OPTIONS:\n"
-"    new       Create new local repo. [ TYPE NAME ]\n"
-"    get       Get repo from a mirror (arch, github, aur, etc.). [ MIRROR NAME ]\n"
-"    remove    Remove local repo.\n"
-    );
+
+
+
+
+
+/******************************************************
+ * Function for loading bar in console. Need to start *
+ * at new thread.                                     *
+ ******************************************************/
+
+void *loadingTh(void *args)
+{
+    const char *loading[] = {"|", "/", "-", "\\"};
+    int i;
+
+    while (1) {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... %s", (char*)args, loading[i % 4]);
+        fflush(stdout);
+        usleep(200000);
+
+        i++;
+        if (i == 4) i=0;
+    }
+}
+
+
+/******************************************************
+ * Function to clear loading bar in console.          *
+ ******************************************************/
+
+void clrLoading(bool isCorrect, char *str)
+{
+    if (isCorrect) {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_GREEN "Done!" RESET);
+    }
+
+    else {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET "\n");
+    }
+
+    putchar('\n');
+    fflush(stdout);
 }
 
 
 
-
-
-EnvVar* parseEnv(const char *envString, int *count) {
+EnvVar* parseEnv(const char *envString, int *count)
+{
     int lines = 0;
     const char *ptr = envString;
     while (*ptr) {
@@ -62,11 +88,13 @@ EnvVar* parseEnv(const char *envString, int *count) {
     return envVarsArray;
 }
 
-void freeEnvVars(EnvVar *envVars, int count) {
+void freeEnvVars(EnvVar *envVars, int count)
+{
     for (int i = 0; i < count; i++) {
         free(envVars[i].key);
         free(envVars[i].value);
     }
+
     free(envVars);
 }
 
@@ -74,7 +102,8 @@ void freeEnvVars(EnvVar *envVars, int count) {
 
 
 
-char* readFile(const char* filename) {
+char* readFile(const char* filename)
+{
     FILE *file;
     char line[256];
     char *content = NULL;
@@ -110,7 +139,14 @@ char* readFile(const char* filename) {
     return content;
 }
 
-char** splitString(const char *input, int *count) {
+
+/******************************************************
+ * Tokenizing a string ny '\n' and writes it into     *
+ * string array.                                      *
+ ******************************************************/
+
+char** splitString(const char *input, int *count)
+{
     char *input_copy = strdup(input);
     if (!input_copy) {
         logerr("Can't copy string for list. (splitString).");
@@ -147,7 +183,15 @@ char** splitString(const char *input, int *count) {
     return args;
 }
 
-void logAdd(const char *textToAdd) {
+
+
+/******************************************************
+ * Add some text to log file in                       *
+ * $(adkpkg -p adkpkg)/logs                           *
+ ******************************************************/
+
+void logAdd(const char *textToAdd)
+{
     char *log_path = "/apps/c/adkpkg/logs";
 
     FILE *file = fopen(strcat(HOME, log_path), "a");
@@ -170,35 +214,14 @@ void logAdd(const char *textToAdd) {
     fclose(file);
 }
 
-char* getPkgName(short type, short *len) {
-    switch (type) {
-        case 0:
-            *len = 1;
-            return "c";
-        case 1:
-            *len = 3;
-            return "cpp";
-    }
 
-    logerr("This type of package in unavariable.");
-    exit(1);
-}
+/******************************************************
+ * Creates a custom package based on template.        *
+ ******************************************************/
 
-short getPkgIndex(char *type) {
-    if (strcmp(type, "c") == 0) {
-        return 0;
-    } else
-    if (strcmp(type, "cpp") == 0) {
-        return 1;
-    }
-
-    logerr("This type of package in unavariable.");
-    exit(1);
-}
-
-bool mkNew(char *name, short type) {
-    short type_len = 0;
-    char *type_str = getPkgName(type, &type_len);
+bool mkNew(char *name, char *type_str)
+{
+    short type_len = strlen(type_str);
     short name_len = strlen(name);
 
     pthread_t cp_load;
@@ -210,7 +233,13 @@ bool mkNew(char *name, short type) {
         +(HOME_LEN*5);
 
     char *cp_template = malloc(cp_template_len);
-    snprintf(cp_template, cp_template_len, "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/", HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name);
+    snprintf
+    (
+            cp_template,
+            cp_template_len,
+            "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/",
+            HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name
+    );
 
     logAdd(cp_template);
     int status = system(cp_template);
@@ -220,7 +249,7 @@ bool mkNew(char *name, short type) {
 
         logerr("Unavariable to copy template to package.");
         log("Aborting...");
-        exit(1); // TODO: сделать очисту памяти по аборту/завершению
+        exit(1);
     }
 
     pthread_cancel(cp_load);
@@ -228,14 +257,41 @@ bool mkNew(char *name, short type) {
     return true;
 }
 
-bool delPkg(char *name, short type) {
-    short type_len;
-    char *type_str = getPkgName(type, &type_len);
 
+
+/******************************************************
+ * Deletes a package.                                 *
+ ******************************************************/
+
+bool delPkg(char *name, char *type_str)
+{
+    if (askDownload) {
+        putchar('\n');
+        puts("Remove this package? [y/N]:");
+        logarr;
+
+        char * answer=0x00;
+        size_t len_answer = 0;
+
+        if (getline(&answer, &len_answer, stdin)<0) {
+            logerr("Can't read the answer");
+            log("Aborting...");
+            exit(1);
+        }
+
+        for (int i=0; i<len_answer; ++i) {
+            answer[i]=tolower(answer[i]);
+            if (answer[i]=='\n') { answer[i]=0; }
+        }
+
+        if (0==strcmp(answer, "n") || 0==strcmp(answer, "no") || answer[0]==0) { exit(0); }
+    }
+
+    short type_len = strlen(type_str);
     short rm_path_len = type_len
         +9
         +strlen(name);
-    char *rm_path = malloc(rm_path_len); // 'rm -rf ~/apps/c/test'
+    char *rm_path = malloc(rm_path_len);
 
     snprintf(rm_path, rm_path_len, "~/apps/%s/%s/", type_str, name);
     
@@ -273,14 +329,19 @@ bool delPkg(char *name, short type) {
     return true;
 }
 
-void freeStrArr(char **str_arr, int len) {
-    for (int i=0; i<len; ++i) {
-        free(str_arr[i]);
-    }
+void freeStrArr(char ** str_arr, int len)
+{
+    for (int i=0; i<len; ++i) { free(str_arr[i]); }
     free(str_arr);
 }
 
-bool getPkg(char *name) {
+
+/******************************************************
+ * Download a package.                                *
+ ******************************************************/
+
+bool getPkg(char *name)
+{
     log("Getting mirror list...");
     short len_list = 32
         +HOME_LEN;
@@ -289,7 +350,6 @@ bool getPkg(char *name) {
     snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/%s.txt", HOME, mirrorName);
 
     char *list = readFile(list_cmd);
-    printf("LIST: '%s'\n", list);
     free(list_cmd);
 
     bool isFounded = false;
@@ -317,9 +377,30 @@ bool getPkg(char *name) {
         exit(1);
     }
 
-    log("Package to download:");
-    printf("'%s'\n%d\n", package_repo);
-    // TODO: сделать спрос на скачивание
+    log("Command for download:");
+    printf("'%s'\n", package_repo);
+
+    if (askDownload) {
+        putchar('\n');
+        puts("Download this package? [Y/n]:");
+        logarr;
+
+        char * answer=0x00;
+        size_t len_answer = 0;
+
+        if (getline(&answer, &len_answer, stdin)<0) {
+            logerr("Can't read the answer");
+            log("Aborting...");
+            exit(1);
+        }
+
+        for (int i=0; i<len_answer; ++i) {
+            answer[i]=tolower(answer[i]);
+            if (answer[i]=='\n') { answer[i]=0; }
+        }
+
+        if (0==strcmp(answer, "n") || 0==strcmp(answer, "no")) { exit(0); }
+    }
 
     log("Preparing to download...");
 
@@ -333,7 +414,6 @@ bool getPkg(char *name) {
     pthread_t load_download;
     pthread_create(&load_download, 0, loadingTh, "Downloading package");
 
-    //                 11==strlen("git clone ")+1 (null-terminator)
     status = system(package_repo);
     free(package_repo);
     if (status) {
@@ -450,14 +530,17 @@ bool getPkg(char *name) {
     return true;
 }
 
-void checkTFA(int argv, int min) {
+/* check for Too Few Argunents (TFA) */
+void checkTFA(int argv, int min)
+{
     if (argv < min+1) {
         logerr("Too few arguments. See --help.");
         exit(1);
     }
 }
 
-int main(int argv, char **argc) {
+int main(int argv, char ** argc)
+{
     if (getuid() == 0) {
         logerr("Do not run as root.");
         exit(1);
@@ -476,7 +559,6 @@ int main(int argv, char **argc) {
         if (0==strcmp(argc[i], "--path") || 0==strcmp(argc[i], "-p")) {
             checkTFA(argv, 2);
 
-            // $HOME/apps/c/adkpkg/PKGS_INFO
             short p_info_path_len = 25+HOME_LEN;
             char *p_info_path = malloc(p_info_path_len);
             snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
@@ -488,42 +570,58 @@ int main(int argv, char **argc) {
 
             for (int j=0; j<pkgs_len; ++j) {
                 if (0==strcmp(pkgs[j].key, argc[i+1])) {
-                    printf("%s\n", pkgs[j].value);
+                    puts(pkgs[j].value);
                     break;
                 }
             }
             exit(0);
         }
         if (0==strcmp(argc[i], "--help") || 0==strcmp(argc[i], "-h")) {
-            printHelp();
+            puts(INFO "\n");
             exit(0);
         }
         if (0==strcmp(argc[i], "--version") || 0==strcmp(argc[i], "-v")) {
-            printf(VERSION "\n");
+            puts(VERSION "\n");
             exit(0);
         }
     }
 
     if (strcmp(argc[1], "new") == 0) {
         checkTFA(argv, 3);
-        mkNew(argc[3], getPkgIndex(argc[2]));
+        mkNew(argc[3], argc[2]);
     }
 
     else if (strcmp(argc[1], "remove") == 0) {
         checkTFA(argv, 3);
-        delPkg(argc[3], getPkgIndex(argc[2]));
+
+        short i=0;
+        if (0==strcmp(argc[2], "-a") || 0==strcmp(argc[2], "--dont-ask")) {
+            i++;
+            checkTFA(argv, 3+i);
+            askDownload = false;
+        }
+
+        delPkg(argc[3+i], argc[2+i]);
     }
 
     else if (strcmp(argc[1], "get") == 0) {
         checkTFA(argv, 3);
 
-        mirrorName = strdup(argc[2]);
-        getPkg(argc[3]);
+        short i=0;
+        if (0==strcmp(argc[2], "-a") || 0==strcmp(argc[2], "--dont-ask")) {
+            i++;
+            checkTFA(argv, 3+i);
+            askDownload = false;
+        }
+
+        mirrorName = strdup(argc[2+i]);
+        getPkg(argc[3+i]);
     }
 
     else {
         logerr("Incorrect args. See --help.");
         exit(1);
     }
+
     return 0;
 }
