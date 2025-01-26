@@ -1,5 +1,5 @@
-#ifndef LOGS_H
-#define LOGS_H
+#ifndef ADKPKG_H
+#define ADKPKG_H
 
 /*******************************************
  * All includs of adkcfg.h (includs part). *
@@ -20,7 +20,7 @@
  *******************************************/
 
 /* information about program */
-#define VERSION "adkpkg v0.2"
+#define VERSION "adkpkg v1.0 (release)"
 #define INFO VERSION "\n" \
 "Package Manager by Adisteyf (adk.) under the MIT License.\n\n" \
 "Usage: adkpkg [ -h|--help || -v|--version || -p|--path ] *OPTION* ...\n\n" \
@@ -87,8 +87,6 @@ char  ** splitString(const char *input, int *count);
 /* basic functions */
 int      main(int argv, char **argc);
 void     logAdd(const char *textToAdd);
-//char   * getPkgName(short type, short *len);
-//short    getPkgIndex(char *type);
 void     checkTFA(int argv, int min);
 
 /* functions for free memory */
@@ -102,4 +100,4 @@ bool     delPkg(char *name, char *type_str);
 bool     getPkg(char *name);
 
 
-#endif // LOGS_H
+#endif /* ADKPKG_H */

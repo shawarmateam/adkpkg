@@ -4,6 +4,33 @@
 
 #include "adkpkg.h"
 
+/*
+ * ADKPKG (adk's pkg) - MIT LICENSE (2024-2025) (c) Adisteyf (adk.) / Shawarmateam (by adisteyf).
+ * 
+ * ADKPKG is a package manager for UNIX systems that connects various UNIX package managers and 
+ * installation utilities (e.g., git, wget, etc.).
+ *
+ * You can check the version using `adkpkg --version` and get help using `adkpkg --help`.
+ *
+ *
+ * This project is licensed under the MIT License and is owned by Adisteyf (adk).
+ *
+ * ## Dependencies:
+ * 
+ * - glibc (GNU C Library)
+ * - UNIX/Linux headers of your OS & API (for dirent.h)
+ *
+ * ## Recommended Compiler:
+ * 
+ * - GCC
+ *
+ * ## Links:
+ * 
+ * - Repository:      https://github.com/adisteyf/adkpkg.git
+ * - Main Repository: https://github.com/shawarmateam/adkpkg.git (for pull requests)
+ * - Bug Reports:     https://github.com/shawarmateam/adkpkg/issues
+ */
+
 
 
 
@@ -100,7 +127,10 @@ void freeEnvVars(EnvVar *envVars, int count)
 
 
 
-
+/**********************************************
+ * Check if folder contains any files/folders *
+ * (excluding dotfiles).                      *
+ **********************************************/
 
 int checkFolderContent(char * directory)
 {
@@ -258,7 +288,7 @@ bool mkNew(char *name, char *type_str)
         +(HOME_LEN*5);
 
     char *cp_template = malloc(cp_template_len);
-    snprintf
+    snprintf       /* copy template into apps/lang dir */
     (
             cp_template,
             cp_template_len,
