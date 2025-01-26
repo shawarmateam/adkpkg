@@ -1,33 +1,86 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
+/*****************
+ * Headers       *
+ *****************/
+
 #include "adkpkg.h"
 
-char *HOME;
-short HOME_LEN;
-char *mirrorName;
-bool isOverSystem;
+/*
+ * ADKPKG (adk's pkg) - MIT LICENSE (2024-2025) (c) Adisteyf (adk.) / Shawarmateam (by adisteyf).
+ * 
+ * ADKPKG is a package manager for UNIX systems that connects various UNIX package managers and 
+ * installation utilities (e.g., git, wget, etc.).
+ *
+ * You can check the version using `adkpkg --version` and get help using `adkpkg --help`.
+ *
+ *
+ * This project is licensed under the MIT License and is owned by Adisteyf (adk).
+ *
+ * ## Dependencies:
+ * 
+ * - glibc (GNU C Library)
+ * - UNIX/Linux headers of your OS & API (for dirent.h)
+ *
+ * ## Recommended Compiler:
+ * 
+ * - GCC
+ *
+ * ## Links:
+ * 
+ * - Repository:      https://github.com/adisteyf/adkpkg.git
+ * - Main Repository: https://github.com/shawarmateam/adkpkg.git (for pull requests)
+ * - Bug Reports:     https://github.com/shawarmateam/adkpkg/issues
+ */
 
 
-void printHelp() {
-    printf(
-VERSION "\n"
-"Package Manager by adk.\n\n"
-"Usage: adkpkg [ -h|--help ] [ -v|--version ] [ -p|--path [PKG_NAME] ]\n\n"
-"OPTIONS:\n"
-"    new       Create new local repo. [ TYPE NAME ]\n"
-"    get       Get repo from a mirror (arch, github, aur, etc.). [ MIRROR NAME ]\n"
-"    remove    Remove local repo.\n"
-    );
+
+
+
+
+
+
+/******************************************************
+ * Function for loading bar in console. Need to start *
+ * at new thread.                                     *
+ ******************************************************/
+
+void *loadingTh(void *args)
+{
+    const char *loading[] = {"|", "/", "-", "\\"};
+    int i;
+
+    while (1) {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... %s", (char*)args, loading[i % 4]);
+        fflush(stdout);
+        usleep(200000);
+
+        i++;
+        if (i == 4) i=0;
+    }
+}
+
+
+/******************************************************
+ * Function to clear loading bar in console.          *
+ ******************************************************/
+
+void clrLoading(bool isCorrect, char *str)
+{
+    if (isCorrect) {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_GREEN "Done!" RESET);
+    }
+
+    else {
+        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET "\n");
+    }
+
+    putchar('\n');
+    fflush(stdout);
 }
 
 
 
-
-
-EnvVar* parseEnv(const char *envString, int *count) {
+EnvVar* parseEnv(const char *envString, int *count)
+{
     int lines = 0;
     const char *ptr = envString;
     while (*ptr) {
@@ -62,19 +115,50 @@ EnvVar* parseEnv(const char *envString, int *count) {
     return envVarsArray;
 }
 
-void freeEnvVars(EnvVar *envVars, int count) {
+void freeEnvVars(EnvVar *envVars, int count)
+{
     for (int i = 0; i < count; i++) {
         free(envVars[i].key);
         free(envVars[i].value);
     }
+
     free(envVars);
 }
 
 
 
+/**********************************************
+ * Check if folder contains any files/folders *
+ * (excluding dotfiles).                      *
+ **********************************************/
+
+int checkFolderContent(char * directory)
+{
+    struct dirent *entry;
+    DIR *dp = opendir(directory);
+
+    if (dp == NULL) {
+        printf("directory equals '%s'\n", directory);
+        logerr("Failed to open directory");
+        exit(3);
+    }
+
+    int has_files = 0;
+    while ((entry = readdir(dp)) != NULL) {
+        if (entry->d_name[0] != '.') {
+            has_files = 1;
+            break;
+        }
+    }
+
+    closedir(dp);
+
+    return has_files;
+}
 
 
-char* readFile(const char* filename) {
+char* readFile(const char* filename)
+{
     FILE *file;
     char line[256];
     char *content = NULL;
@@ -110,7 +194,14 @@ char* readFile(const char* filename) {
     return content;
 }
 
-char** splitString(const char *input, int *count) {
+
+/******************************************************
+ * Tokenizing a string ny '\n' and writes it into     *
+ * string array.                                      *
+ ******************************************************/
+
+char** splitString(const char *input, int *count)
+{
     char *input_copy = strdup(input);
     if (!input_copy) {
         logerr("Can't copy string for list. (splitString).");
@@ -147,7 +238,15 @@ char** splitString(const char *input, int *count) {
     return args;
 }
 
-void logAdd(const char *textToAdd) {
+
+
+/******************************************************
+ * Add some text to log file in                       *
+ * $(adkpkg -p adkpkg)/logs                           *
+ ******************************************************/
+
+void logAdd(const char *textToAdd)
+{
     char *log_path = "/apps/c/adkpkg/logs";
 
     FILE *file = fopen(strcat(HOME, log_path), "a");
@@ -170,35 +269,14 @@ void logAdd(const char *textToAdd) {
     fclose(file);
 }
 
-char* getPkgName(short type, short *len) {
-    switch (type) {
-        case 0:
-            *len = 1;
-            return "c";
-        case 1:
-            *len = 3;
-            return "cpp";
-    }
 
-    logerr("This type of package in unavariable.");
-    exit(1);
-}
+/******************************************************
+ * Creates a custom package based on template.        *
+ ******************************************************/
 
-short getPkgIndex(char *type) {
-    if (strcmp(type, "c") == 0) {
-        return 0;
-    } else
-    if (strcmp(type, "cpp") == 0) {
-        return 1;
-    }
-
-    logerr("This type of package in unavariable.");
-    exit(1);
-}
-
-bool mkNew(char *name, short type) {
-    short type_len = 0;
-    char *type_str = getPkgName(type, &type_len);
+bool mkNew(char *name, char *type_str)
+{
+    short type_len = strlen(type_str);
     short name_len = strlen(name);
 
     pthread_t cp_load;
@@ -210,7 +288,13 @@ bool mkNew(char *name, short type) {
         +(HOME_LEN*5);
 
     char *cp_template = malloc(cp_template_len);
-    snprintf(cp_template, cp_template_len, "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/", HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name);
+    snprintf       /* copy template into apps/lang dir */
+    (
+            cp_template,
+            cp_template_len,
+            "cp -r %s/apps/c/adkpkg/%s-pkg/ %s/apps/%s/ > %s/apps/c/adkpkg/logs 2>&1 && mv %s/apps/%s/%s-pkg/ %s/apps/%s/%s/",
+            HOME, type_str, HOME, type_str, HOME, HOME, type_str, type_str, HOME, type_str, name
+    );
 
     logAdd(cp_template);
     int status = system(cp_template);
@@ -220,7 +304,7 @@ bool mkNew(char *name, short type) {
 
         logerr("Unavariable to copy template to package.");
         log("Aborting...");
-        exit(1); // TODO: сделать очисту памяти по аборту/завершению
+        exit(1);
     }
 
     pthread_cancel(cp_load);
@@ -228,14 +312,41 @@ bool mkNew(char *name, short type) {
     return true;
 }
 
-bool delPkg(char *name, short type) {
-    short type_len;
-    char *type_str = getPkgName(type, &type_len);
 
+
+/******************************************************
+ * Deletes a package.                                 *
+ ******************************************************/
+
+bool delPkg(char *name, char *type_str)
+{
+    if (askDownload) {
+        putchar('\n');
+        puts("Remove this package? [y/N]:");
+        logarr;
+
+        char * answer=0x00;
+        size_t len_answer = 0;
+
+        if (getline(&answer, &len_answer, stdin)<0) {
+            logerr("Can't read the answer");
+            log("Aborting...");
+            exit(1);
+        }
+
+        for (int i=0; i<len_answer; ++i) {
+            answer[i]=tolower(answer[i]);
+            if (answer[i]=='\n') { answer[i]=0; }
+        }
+
+        if (0==strcmp(answer, "n") || 0==strcmp(answer, "no") || answer[0]==0) { exit(0); }
+    }
+
+    short type_len = strlen(type_str);
     short rm_path_len = type_len
         +9
         +strlen(name);
-    char *rm_path = malloc(rm_path_len); // 'rm -rf ~/apps/c/test'
+    char *rm_path = malloc(rm_path_len);
 
     snprintf(rm_path, rm_path_len, "~/apps/%s/%s/", type_str, name);
     
@@ -273,14 +384,19 @@ bool delPkg(char *name, short type) {
     return true;
 }
 
-void freeStrArr(char **str_arr, int len) {
-    for (int i=0; i<len; ++i) {
-        free(str_arr[i]);
-    }
+void freeStrArr(char ** str_arr, int len)
+{
+    for (int i=0; i<len; ++i) { free(str_arr[i]); }
     free(str_arr);
 }
 
-bool getPkg(char *name) {
+
+/******************************************************
+ * Download a package.                                *
+ ******************************************************/
+
+bool getPkg(char *name)
+{
     log("Getting mirror list...");
     short len_list = 32
         +HOME_LEN;
@@ -289,7 +405,6 @@ bool getPkg(char *name) {
     snprintf(list_cmd, len_list, "%s/apps/c/adkpkg/lists/%s.txt", HOME, mirrorName);
 
     char *list = readFile(list_cmd);
-    printf("LIST: '%s'\n", list);
     free(list_cmd);
 
     bool isFounded = false;
@@ -299,8 +414,7 @@ bool getPkg(char *name) {
     char *token = strtok(list, "\n");
     while (token != 0) {
         if (isFounded) {
-            package_repo = malloc(strlen(token));
-            package_repo = token;
+            package_repo = strdup(token);
             break;
         }
 
@@ -317,9 +431,30 @@ bool getPkg(char *name) {
         exit(1);
     }
 
-    log("Package to download:");
-    printf("'%s'\n%d\n", package_repo);
-    // TODO: сделать спрос на скачивание
+    log("Command for download:");
+    printf("'%s'\n", package_repo);
+
+    if (askDownload) {
+        putchar('\n');
+        puts("Download this package? [Y/n]:");
+        logarr;
+
+        char * answer=0x00;
+        size_t len_answer = 0;
+
+        if (getline(&answer, &len_answer, stdin)<0) {
+            logerr("Can't read the answer");
+            log("Aborting...");
+            exit(1);
+        }
+
+        for (int i=0; i<len_answer; ++i) {
+            answer[i]=tolower(answer[i]);
+            if (answer[i]=='\n') { answer[i]=0; }
+        }
+
+        if (0==strcmp(answer, "n") || 0==strcmp(answer, "no")) { exit(0); }
+    }
 
     log("Preparing to download...");
 
@@ -330,134 +465,120 @@ bool getPkg(char *name) {
         exit(1);
     }
 
-    pthread_t load_download;
-    pthread_create(&load_download, 0, loadingTh, "Downloading package");
-
-    //                 11==strlen("git clone ")+1 (null-terminator)
     status = system(package_repo);
     free(package_repo);
-    if (status) {
-        pthread_cancel(load_download);
-        clrLoading(false, "Downloading package");
+    if (status && !forceDownload) {
+        printf("status equals %d\n", status);
         logerr("Unable to download package into temp dir (/tmp/adkpkg).");
+        logerr("Use -f for force.");
         log("Aborting...");
         exit(1);
     }
 
-    int check_oversys_len = 36+strlen(name);
-    char *check_oversys = malloc(check_oversys_len);
-    snprintf(check_oversys, check_oversys_len, "ls /tmp/adkpkg/%s/over_system.tar.zst", name);
-    status = system(check_oversys);
-    if (status) isOverSystem = false;
-    else        isOverSystem = true;
-    free(check_oversys);
+    int adkcfg_path_len = 20
+        +strlen(name);
 
-    if (!isOverSystem) {
-        int adkcfg_path_len = 20
-            +strlen(name);
+    char *adkcfg_path = malloc(adkcfg_path_len);
 
-        char *adkcfg_path = malloc(adkcfg_path_len);
+    snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
+    char *ADKCFG = readFile(adkcfg_path);
+    free(adkcfg_path);
 
-        snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
-        char *ADKCFG = readFile(adkcfg_path);
-        free(adkcfg_path);
+    int cfg_len = 0;
+    EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
+    printf("ADKCFG: '%s'\n", ADKCFG);
+    free(ADKCFG);
 
-        int cfg_len = 0;
-        EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
-        printf("ADKCFG: '%s'\n", ADKCFG);
-        free(ADKCFG);
-
-        char *type = 0x00;
-        for (int i=0; i<cfg_len; ++i) {
-            printf("current key: %s\n", ADKCFG_VARS[i].key);
-            if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
-                type = ADKCFG_VARS[i].value;
-        }
-
-        pthread_cancel(load_download);
-        if (!type) {
-            clrLoading(false, "Downloading package");
-            logerr("Type is missing in package.");
-            printf("Type: '%s'\n", type);
-            log("Aborting...");
-            exit(1);
-        }
-
-        clrLoading(true, "Downloading package");
-        pthread_t cp_load;
-        pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
-
-        int mk_typedir_len = 17
-            +HOME_LEN
-            +strlen(type);
-
-        char *mk_typedir = malloc(mk_typedir_len);
-        snprintf(mk_typedir, mk_typedir_len, "mkdir -p %s/apps/%s", HOME, type);
-        system(mk_typedir);
-
-        free(mk_typedir);
-
-        int cp_to_apps_len = 24
-            +strlen(type)
-            +HOME_LEN
-            +(strlen(name))*2;
-
-        char *cp_to_apps = malloc(cp_to_apps_len);
-        snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkpkg/%s %s/apps/%s/%s", name, HOME, type, name);
-        status = system(cp_to_apps);
-
-        pthread_cancel(cp_load);
-        if (status) {
-            clrLoading(false, "Copying package into ~/apps");
-            logerr("Unable to download package into ~/apps");
-            printf("%s\n", status);
-            log("Aborting...");
-            free(cp_to_apps);
-            exit(1);
-        }
-
-        clrLoading(true, "Copying package into ~/apps");
-        log("Setting package into PKGS_INFO file...");
-
-        short p_info_path_len = 25+HOME_LEN;
-        char *p_info_path = malloc(p_info_path_len);
-        snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
-
-        short str_pkg_len = 2
-            +(strlen(name)*2)
-            +HOME_LEN
-            +strlen(type);
-
-        char *str_pkg = malloc(str_pkg_len);
-        snprintf(str_pkg, str_pkg_len, "%s=%s/apps/%s/%s", name, HOME, type, name);
-
-        FILE *pkgs_info = fopen(p_info_path, "a");
-        free(p_info_path);
-        if (!pkgs_info) {
-            logerr("Can't open PKGS_INFO file. Package was not added to package list.");
-        } else
-
-        if (fputs(str_pkg, pkgs_info) == EOF) {
-            logerr("Can't write to PKGS_INFO file. Package was not added to package list.");
-        }
-
-        free(str_pkg);
-        fclose(pkgs_info);
+    char *type = 0x00;
+    for (int i=0; i<cfg_len; ++i) {
+        printf("current key: %s\n", ADKCFG_VARS[i].key);
+        if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
+            type = ADKCFG_VARS[i].value;
     }
+
+    if (!type) {
+        logerr("Type is missing in package.");
+        printf("Type: '%s'\n", type);
+        log("Aborting...");
+        exit(1);
+    }
+
+    pthread_t cp_load;
+    pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
+
+    int mk_typedir_len = 17
+        +HOME_LEN
+        +strlen(type);
+
+    char *mk_typedir = malloc(mk_typedir_len);
+    snprintf(mk_typedir, mk_typedir_len, "mkdir -p %s/apps/%s", HOME, type);
+    system(mk_typedir);
+
+    free(mk_typedir);
+
+    int cp_to_apps_len = 24
+        +strlen(type)
+        +HOME_LEN
+        +(strlen(name))*2;
+
+    char *cp_to_apps = malloc(cp_to_apps_len);
+    snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkpkg/%s %s/apps/%s/%s", name, HOME, type, name);
+    status = system(cp_to_apps);
+
+    pthread_cancel(cp_load);
+    if (status) {
+        clrLoading(false, "Copying package into ~/apps");
+        logerr("Unable to download package into ~/apps");
+        printf("%s\n", status);
+        log("Aborting...");
+        free(cp_to_apps);
+        exit(1);
+    }
+
+    clrLoading(true, "Copying package into ~/apps");
+    log("Setting package into PKGS_INFO file...");
+
+    short p_info_path_len = 25+HOME_LEN;
+    char *p_info_path = malloc(p_info_path_len);
+    snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
+
+    short str_pkg_len = 2
+        +(strlen(name)*2)
+        +HOME_LEN
+        +strlen(type);
+
+    char *str_pkg = malloc(str_pkg_len);
+    snprintf(str_pkg, str_pkg_len, "%s=%s/apps/%s/%s", name, HOME, type, name);
+
+    FILE *pkgs_info = fopen(p_info_path, "a");
+    free(p_info_path);
+    if (!pkgs_info) {
+        logerr("Can't open PKGS_INFO file. Package was not added to package list.");
+    } else
+
+    if (fputs(str_pkg, pkgs_info) == EOF) {
+        logerr("Can't write to PKGS_INFO file. Package was not added to package list.");
+    }
+
+    free(str_pkg);
+    fclose(pkgs_info);
 
     log("Package was downloaded successfully.");
 
     return true;
 }
 
-void checkTFA(int argv, int min) {
+/* check for Too Few Argunents (TFA) */
+void checkTFA(int argv, int min)
+{
     if (argv < min+1) {
         logerr("Too few arguments. See --help.");
         exit(1);
     }
 }
 
-int main(int argv, char **argc) {
+int main(int argv, char ** argc)
+{
     if (getuid() == 0) {
         logerr("Do not run as root.");
         exit(1);
@@ -476,7 +597,6 @@ int main(int argv, char **argc) {
         if (0==strcmp(argc[i], "--path") || 0==strcmp(argc[i], "-p")) {
             checkTFA(argv, 2);
 
-            // $HOME/apps/c/adkpkg/PKGS_INFO
             short p_info_path_len = 25+HOME_LEN;
             char *p_info_path = malloc(p_info_path_len);
             snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
@@ -488,42 +608,64 @@ int main(int argv, char **argc) {
 
             for (int j=0; j<pkgs_len; ++j) {
                 if (0==strcmp(pkgs[j].key, argc[i+1])) {
-                    printf("%s\n", pkgs[j].value);
+                    puts(pkgs[j].value);
                     break;
                 }
             }
             exit(0);
         }
         if (0==strcmp(argc[i], "--help") || 0==strcmp(argc[i], "-h")) {
-            printHelp();
+            puts(INFO "\n");
             exit(0);
         }
         if (0==strcmp(argc[i], "--version") || 0==strcmp(argc[i], "-v")) {
-            printf(VERSION "\n");
+            puts(VERSION "\n");
             exit(0);
         }
     }
 
     if (strcmp(argc[1], "new") == 0) {
         checkTFA(argv, 3);
-        mkNew(argc[3], getPkgIndex(argc[2]));
+        mkNew(argc[3], argc[2]);
     }
 
     else if (strcmp(argc[1], "remove") == 0) {
         checkTFA(argv, 3);
-        delPkg(argc[3], getPkgIndex(argc[2]));
+
+        short i=0;
+        if (0==strcmp(argc[2], "-a") || 0==strcmp(argc[2], "--dont-ask")) {
+            i++;
+            checkTFA(argv, 3+i);
+            askDownload = false;
+        }
+
+        delPkg(argc[3+i], argc[2+i]);
     }
 
     else if (strcmp(argc[1], "get") == 0) {
         checkTFA(argv, 3);
 
-        mirrorName = strdup(argc[2]);
-        getPkg(argc[3]);
+        short i=0;
+        if (0==strcmp(argc[2], "-a") || 0==strcmp(argc[2], "--dont-ask")) {
+            i++;
+            checkTFA(argv, 3+i);
+            askDownload = false;
+        }
+
+        if (0==strcmp(argc[2+i], "-f") || 0==strcmp(argc[2+i], "--force")) {
+            i++;
+            checkTFA(argv, 3+i);
+            forceDownload = true;
+        }
+
+        mirrorName = strdup(argc[2+i]);
+        getPkg(argc[3+i]);
     }
 
     else {
         logerr("Incorrect args. See --help.");
         exit(1);
     }
+
     return 0;
 }

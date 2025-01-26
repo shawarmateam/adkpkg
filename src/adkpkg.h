@@ -1,60 +1,103 @@
-#ifndef LOGS_H
-#define LOGS_H
+#ifndef ADKPKG_H
+#define ADKPKG_H
 
-#define VERSION "adkpkg v0.1"
+/*******************************************
+ * All includs of adkcfg.h (includs part). *
+ *******************************************/
 
+#include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <string.h>
+#include <dirent.h>
 
 
-#define bool char
-#define true 255
-#define false 0
-// better than stdbool.h
+/*******************************************
+ * All defines of adkcfg.h (defines part). *
+ *******************************************/
 
+/* information about program */
+#define VERSION "adkpkg v1.0 (release)"
+#define INFO VERSION "\n" \
+"Package Manager by Adisteyf (adk.) under the MIT License.\n\n" \
+"Usage: adkpkg [ -h|--help || -v|--version || -p|--path ] *OPTION* ...\n\n" \
+"OPTIONS:\n" \
+"    new       Create new local repo. TYPE NAME\n" \
+"    get       Get repo from a mirror (arch, github, aur, etc.). [ -a|--dont-ask || -f|--force ] MIRROR_NAME PACKAGE_NAME\n" \
+"    remove    Remove local repo. [ -a|--dont-ask ] MIRROR_NAME PACKAGE_NAME"
+
+
+
+/* better than stdbool.h */
+#define   bool  char
+#define   true  255
+#define   false 0
+
+/* main defines */
 #define BOLD_RED "\033[1;31m"
 #define BOLD_YELLOW "\033[1;33m"
 #define BOLD_GREEN "\033[1;32m"
 #define RESET "\033[0m"
 #define LAST_STR "\r"
 
-#define logerr(msg) fputs(BOLD_RED "ERROR: " RESET msg "\n", stderr)
-#define log(msg) printf(BOLD_YELLOW "=> " RESET msg "\n")
+/* logs */
+#define logerr(msg) fputs(BOLD_RED "ERROR: " RESET msg "\n\n", stderr)
+#define log(msg) fputs(BOLD_YELLOW "=> " RESET msg "\n", stdout)
+#define logarr printf(BOLD_YELLOW "=> " RESET)
 
 
+
+/******************************************************
+ * EnvVar is a structure of env variable for .env     *
+ * files. Only two parameters: key (name of variable) *
+ * and value (what variable contains).                *
+ ******************************************************/
 
 typedef struct {
     char *key;
     char *value;
 } EnvVar;
 
+/* global variables */
+char  *HOME;
+short  HOME_LEN;
+char  *mirrorName;
+bool   isOverSystem;
+bool   askDownload = true;
+bool   forceDownload = false;
 
 
-void *loadingTh(void *args) {
-    const char *loading[] = {"|", "/", "-", "\\"};
-    int i;
+/*************************************************************
+ * Functions                                                 *
+ * INFO: Documentation about functions you can see in main.c *
+ *************************************************************/
 
-    while (1) {
-        printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... %s", (char*)args, loading[i % 4]);
-        fflush(stdout);
-        usleep(200000);
+/* loading bar */
+void   * loadingTh(void *args);
+void     clrLoading(bool isCorrect, char *str);
 
-        i++;
-        if (i == 4) i=0;
-    }
-}
+/* parse functions */
+EnvVar * parseEnv(const char *envString, int *count);
+char   * readFile(const char* filename);
+char  ** splitString(const char *input, int *count);
 
-void clrLoading(bool isCorrect, char *str) {
-    if (isCorrect)
-    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_GREEN "Done!" RESET);
+/* basic functions */
+int      main(int argv, char **argc);
+void     logAdd(const char *textToAdd);
+void     checkTFA(int argv, int min);
 
-    else
-    printf(LAST_STR BOLD_YELLOW "=> " RESET "%s... " BOLD_RED "Error!" RESET "\n");
+/* functions for free memory */
+void     freeEnvVars(EnvVar *envVars, int count);
+void     freeStrArr(char **str_arr, int len);
 
-    printf("\n");
-    fflush(stdout);
-}
 
-#endif // LOGS_H
+/* manipulates with packages */
+bool     mkNew(char *name, char *type_str);
+bool     delPkg(char *name, char *type_str);
+bool     getPkg(char *name);
+
+
+#endif /* ADKPKG_H */
