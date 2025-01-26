@@ -102,6 +102,31 @@ void freeEnvVars(EnvVar *envVars, int count)
 
 
 
+int checkFolderContent(char * directory)
+{
+    struct dirent *entry;
+    DIR *dp = opendir(directory);
+
+    if (dp == NULL) {
+        printf("directory equals '%s'\n", directory);
+        logerr("Failed to open directory");
+        exit(3);
+    }
+
+    int has_files = 0;
+    while ((entry = readdir(dp)) != NULL) {
+        if (entry->d_name[0] != '.') {
+            has_files = 1;
+            break;
+        }
+    }
+
+    closedir(dp);
+
+    return has_files;
+}
+
+
 char* readFile(const char* filename)
 {
     FILE *file;
@@ -359,8 +384,7 @@ bool getPkg(char *name)
     char *token = strtok(list, "\n");
     while (token != 0) {
         if (isFounded) {
-            package_repo = malloc(strlen(token));
-            package_repo = token;
+            package_repo = strdup(token);
             break;
         }
 
@@ -411,119 +435,103 @@ bool getPkg(char *name)
         exit(1);
     }
 
-    pthread_t load_download;
-    pthread_create(&load_download, 0, loadingTh, "Downloading package");
-
     status = system(package_repo);
     free(package_repo);
-    if (status) {
-        pthread_cancel(load_download);
-        clrLoading(false, "Downloading package");
+    if (status && !forceDownload) {
+        printf("status equals %d\n", status);
         logerr("Unable to download package into temp dir (/tmp/adkpkg).");
+        logerr("Use -f for force.");
         log("Aborting...");
         exit(1);
     }
 
-    int check_oversys_len = 36+strlen(name);
-    char *check_oversys = malloc(check_oversys_len);
-    snprintf(check_oversys, check_oversys_len, "ls /tmp/adkpkg/%s/over_system.tar.zst", name);
-    status = system(check_oversys);
-    if (status) isOverSystem = false;
-    else        isOverSystem = true;
-    free(check_oversys);
+    int adkcfg_path_len = 20
+        +strlen(name);
 
-    if (!isOverSystem) {
-        int adkcfg_path_len = 20
-            +strlen(name);
+    char *adkcfg_path = malloc(adkcfg_path_len);
 
-        char *adkcfg_path = malloc(adkcfg_path_len);
+    snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
+    char *ADKCFG = readFile(adkcfg_path);
+    free(adkcfg_path);
 
-        snprintf(adkcfg_path, adkcfg_path_len, "/tmp/adkpkg/%s/ADKCFG", name);
-        char *ADKCFG = readFile(adkcfg_path);
-        free(adkcfg_path);
+    int cfg_len = 0;
+    EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
+    printf("ADKCFG: '%s'\n", ADKCFG);
+    free(ADKCFG);
 
-        int cfg_len = 0;
-        EnvVar *ADKCFG_VARS = parseEnv(ADKCFG, &cfg_len);
-        printf("ADKCFG: '%s'\n", ADKCFG);
-        free(ADKCFG);
-
-        char *type = 0x00;
-        for (int i=0; i<cfg_len; ++i) {
-            printf("current key: %s\n", ADKCFG_VARS[i].key);
-            if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
-                type = ADKCFG_VARS[i].value;
-        }
-
-        pthread_cancel(load_download);
-        if (!type) {
-            clrLoading(false, "Downloading package");
-            logerr("Type is missing in package.");
-            printf("Type: '%s'\n", type);
-            log("Aborting...");
-            exit(1);
-        }
-
-        clrLoading(true, "Downloading package");
-        pthread_t cp_load;
-        pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
-
-        int mk_typedir_len = 17
-            +HOME_LEN
-            +strlen(type);
-
-        char *mk_typedir = malloc(mk_typedir_len);
-        snprintf(mk_typedir, mk_typedir_len, "mkdir -p %s/apps/%s", HOME, type);
-        system(mk_typedir);
-
-        free(mk_typedir);
-
-        int cp_to_apps_len = 24
-            +strlen(type)
-            +HOME_LEN
-            +(strlen(name))*2;
-
-        char *cp_to_apps = malloc(cp_to_apps_len);
-        snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkpkg/%s %s/apps/%s/%s", name, HOME, type, name);
-        status = system(cp_to_apps);
-
-        pthread_cancel(cp_load);
-        if (status) {
-            clrLoading(false, "Copying package into ~/apps");
-            logerr("Unable to download package into ~/apps");
-            printf("%s\n", status);
-            log("Aborting...");
-            free(cp_to_apps);
-            exit(1);
-        }
-
-        clrLoading(true, "Copying package into ~/apps");
-        log("Setting package into PKGS_INFO file...");
-
-        short p_info_path_len = 25+HOME_LEN;
-        char *p_info_path = malloc(p_info_path_len);
-        snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
-
-        short str_pkg_len = 2
-            +(strlen(name)*2)
-            +HOME_LEN
-            +strlen(type);
-
-        char *str_pkg = malloc(str_pkg_len);
-        snprintf(str_pkg, str_pkg_len, "%s=%s/apps/%s/%s", name, HOME, type, name);
-
-        FILE *pkgs_info = fopen(p_info_path, "a");
-        free(p_info_path);
-        if (!pkgs_info) {
-            logerr("Can't open PKGS_INFO file. Package was not added to package list.");
-        } else
-
-        if (fputs(str_pkg, pkgs_info) == EOF) {
-            logerr("Can't write to PKGS_INFO file. Package was not added to package list.");
-        }
-
-        free(str_pkg);
-        fclose(pkgs_info);
+    char *type = 0x00;
+    for (int i=0; i<cfg_len; ++i) {
+        printf("current key: %s\n", ADKCFG_VARS[i].key);
+        if (0==strcmp(ADKCFG_VARS[i].key, "TYPE")) // TODO: добавить больше параметров для adkcfg
+            type = ADKCFG_VARS[i].value;
     }
+
+    if (!type) {
+        logerr("Type is missing in package.");
+        printf("Type: '%s'\n", type);
+        log("Aborting...");
+        exit(1);
+    }
+
+    pthread_t cp_load;
+    pthread_create(&cp_load, 0, loadingTh, "Copying package into ~/apps");
+
+    int mk_typedir_len = 17
+        +HOME_LEN
+        +strlen(type);
+
+    char *mk_typedir = malloc(mk_typedir_len);
+    snprintf(mk_typedir, mk_typedir_len, "mkdir -p %s/apps/%s", HOME, type);
+    system(mk_typedir);
+
+    free(mk_typedir);
+
+    int cp_to_apps_len = 24
+        +strlen(type)
+        +HOME_LEN
+        +(strlen(name))*2;
+
+    char *cp_to_apps = malloc(cp_to_apps_len);
+    snprintf(cp_to_apps, cp_to_apps_len, "mv /tmp/adkpkg/%s %s/apps/%s/%s", name, HOME, type, name);
+    status = system(cp_to_apps);
+
+    pthread_cancel(cp_load);
+    if (status) {
+        clrLoading(false, "Copying package into ~/apps");
+        logerr("Unable to download package into ~/apps");
+        printf("%s\n", status);
+        log("Aborting...");
+        free(cp_to_apps);
+        exit(1);
+    }
+
+    clrLoading(true, "Copying package into ~/apps");
+    log("Setting package into PKGS_INFO file...");
+
+    short p_info_path_len = 25+HOME_LEN;
+    char *p_info_path = malloc(p_info_path_len);
+    snprintf(p_info_path, p_info_path_len, "%s/apps/c/adkpkg/PKGS_INFO", HOME);
+
+    short str_pkg_len = 2
+        +(strlen(name)*2)
+        +HOME_LEN
+        +strlen(type);
+
+    char *str_pkg = malloc(str_pkg_len);
+    snprintf(str_pkg, str_pkg_len, "%s=%s/apps/%s/%s", name, HOME, type, name);
+
+    FILE *pkgs_info = fopen(p_info_path, "a");
+    free(p_info_path);
+    if (!pkgs_info) {
+        logerr("Can't open PKGS_INFO file. Package was not added to package list.");
+    } else
+
+    if (fputs(str_pkg, pkgs_info) == EOF) {
+        logerr("Can't write to PKGS_INFO file. Package was not added to package list.");
+    }
+
+    free(str_pkg);
+    fclose(pkgs_info);
 
     log("Package was downloaded successfully.");
 
@@ -612,6 +620,12 @@ int main(int argv, char ** argc)
             i++;
             checkTFA(argv, 3+i);
             askDownload = false;
+        }
+
+        if (0==strcmp(argc[2+i], "-f") || 0==strcmp(argc[2+i], "--force")) {
+            i++;
+            checkTFA(argv, 3+i);
+            forceDownload = true;
         }
 
         mirrorName = strdup(argc[2+i]);

@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
+#include <dirent.h>
 
 
 /*******************************************
@@ -25,7 +26,7 @@
 "Usage: adkpkg [ -h|--help || -v|--version || -p|--path ] *OPTION* ...\n\n" \
 "OPTIONS:\n" \
 "    new       Create new local repo. TYPE NAME\n" \
-"    get       Get repo from a mirror (arch, github, aur, etc.). [ -a|--dont-ask ] MIRROR_NAME PACKAGE_NAME\n" \
+"    get       Get repo from a mirror (arch, github, aur, etc.). [ -a|--dont-ask || -f|--force ] MIRROR_NAME PACKAGE_NAME\n" \
 "    remove    Remove local repo. [ -a|--dont-ask ] MIRROR_NAME PACKAGE_NAME"
 
 
@@ -66,6 +67,7 @@ short  HOME_LEN;
 char  *mirrorName;
 bool   isOverSystem;
 bool   askDownload = true;
+bool   forceDownload = false;
 
 
 /*************************************************************
